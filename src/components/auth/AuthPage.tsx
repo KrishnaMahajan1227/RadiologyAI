@@ -31,8 +31,10 @@ export function AuthPage() {
     setSuccess('');
     setGoogleLoading(true);
     try {
-      const redirectUrl = window.location.origin;
-
+const redirectUrl =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:5173'
+    : 'https://radiology-ai-psi.vercel.app';
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
