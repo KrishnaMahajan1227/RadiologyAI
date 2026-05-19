@@ -1,0 +1,186 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  GOOGLE SIGN-IN SETUP - COMPLETE FLOW                         ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+WHAT YOU NEED TO DO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET CREDENTIALS FROM GOOGLE
+   └─ Go to: https://console.cloud.google.com
+   └─ Create a Project
+   └─ Enable Google+ API
+   └─ Create OAuth Client ID
+   └─ Get: Client ID + Client Secret
+
+2. ENTER CREDENTIALS IN SUPABASE
+   └─ You are HERE in the screenshot above ✅
+   └─ Paste Client ID in the empty field
+   └─ Paste Client Secret in the empty field
+   └─ Click "Save changes" button
+
+3. DONE!
+   └─ Google Sign-In now works
+   └─ Users can click "Continue with Google"
+
+
+DETAILED STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─ STEP 1: OPEN GOOGLE CLOUD ─────────────────────────────────────────────────┐
+│                                                                              │
+│  1. Open: https://console.cloud.google.com                                  │
+│  2. Sign in with your Google account                                         │
+│  3. You'll see a dashboard                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 2: CREATE PROJECT ───────────────────────────────────────────────────┐
+│                                                                              │
+│  1. Top of page, click "Select a Project"                                   │
+│  2. Click "NEW PROJECT" button                                              │
+│  3. Name: RadAI                                                              │
+│  4. Click "CREATE"                                                           │
+│  5. Wait 30 seconds...                                                       │
+│                                                                              │
+│  Result: New project created ✓                                               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 3: ENABLE GOOGLE+ API ───────────────────────────────────────────────┐
+│                                                                              │
+│  1. Search bar at top: "Google+ API"                                         │
+│  2. Click on "Google+ API"                                                   │
+│  3. Click "ENABLE" button                                                    │
+│  4. Wait for it to enable                                                    │
+│                                                                              │
+│  Result: API is now enabled ✓                                                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 4: SETUP OAUTH CONSENT SCREEN (First time only) ──────────────────┐
+│                                                                              │
+│  1. Left sidebar → "Credentials"                                             │
+│  2. Click "CREATE CREDENTIALS"                                               │
+│  3. Choose "OAuth client ID"                                                 │
+│  4. If you see "Configure OAuth consent screen", do this:                    │
+│     → Click "CONFIGURE CONSENT SCREEN"                                       │
+│     → Choose "External"                                                      │
+│     → Fill:                                                                  │
+│        • App name: RadAI Copilot                                             │
+│        • User support email: your@email.com                                  │
+│        • Developer contact: your@email.com                                   │
+│     → Click "SAVE AND CONTINUE" (3 times)                                    │
+│                                                                              │
+│  Result: Consent screen configured ✓                                         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 5: CREATE OAUTH CLIENT ID ──────────────────────────────────────────┐
+│                                                                              │
+│  1. Left sidebar → "Credentials"                                             │
+│  2. Click "CREATE CREDENTIALS"                                               │
+│  3. Choose "OAuth client ID"                                                 │
+│  4. Application type: "Web application"                                      │
+│  5. Name: RadAI Web App                                                      │
+│  6. In "Authorized redirect URIs":                                           │
+│     → Click "ADD URI"                                                        │
+│     → Paste this exact URL:                                                  │
+│        https://vqycjjkfqzmiueebmkkk.supabase.co/auth/v1/callback             │
+│  7. Click "CREATE"                                                           │
+│                                                                              │
+│  Result: You'll see a popup with:                                            │
+│  • Client ID: 123456789-abcdefg.apps.googleusercontent.com                  │
+│  • Client Secret: some_long_random_string                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 6: COPY TO SUPABASE ─────────────────────────────────────────────────┐
+│                                                                              │
+│  You are looking at this screen (in the screenshot):                         │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────┐               │
+│  │ Google Provider Settings                                │               │
+│  │                                                          │               │
+│  │ Enable Google Sign-In    [✓ ON]                          │               │
+│  │                                                          │               │
+│  │ Google Client ID                                        │               │
+│  │ [______________________________] ← PASTE CLIENT ID HERE  │               │
+│  │                                                          │               │
+│  │ Google OAuth Client Secret                              │               │
+│  │ [______________________________] ← PASTE SECRET HERE     │               │
+│  │                                                          │               │
+│  │ Review Redirect URLs                                    │               │
+│  │                                                          │               │
+│  │ Authorised JavaScript origins                           │               │
+│  │ [https://mri-scan.bolt.host] ← Copy this to Google      │               │
+│  │                                                          │               │
+│  │ Authorised redirect URI                                 │               │
+│  │ [https://.../auth/v1/callback] ← Copy this to Google    │               │
+│  │                                                          │               │
+│  │ [Save changes] ← CLICK WHEN DONE                         │               │
+│  └──────────────────────────────────────────────────────────┘               │
+│                                                                              │
+│  DO THIS:                                                                    │
+│  1. Copy Client ID from Google popup                                        │
+│  2. Paste in "Google Client ID" field above                                 │
+│  3. Copy Client Secret from Google popup                                    │
+│  4. Paste in "Google OAuth Client Secret" field above                       │
+│  5. Click "Save changes" button (blue button at bottom)                     │
+│                                                                              │
+│  Result: Google Sign-In is now LIVE ✓                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After clicking "Save changes", test:
+
+1. Open RadAI login page
+2. Click "Continue with Google" button
+3. You should be redirected to Google login
+4. Sign in with your Google account
+5. You should be redirected back to RadAI dashboard
+
+If this works → DONE! ✅
+
+
+IF SOMETHING GOES WRONG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Error: "refused to connect"
+Fix: You're not done with setup. Follow all steps above.
+
+Error: "Provider google not enabled"
+Fix: Make sure Supabase toggle is ON and you saved changes.
+
+Error: Red text under fields
+Fix: You pasted something wrong. Clear and paste again carefully.
+
+Error: Still not working
+Fix: Wait 2-3 minutes and hard refresh browser (Ctrl+Shift+R)
+
+
+CONTACT POINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Google Cloud Console:     https://console.cloud.google.com
+Supabase Dashboard:       https://app.supabase.com
+RadAI Project:            vqycjjkfqzmiueebmkkk
+
+
+THAT'S IT!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You now have Google Sign-In working!
+
+Users can:
+✅ Click "Continue with Google" button
+✅ Sign in with their Google account
+✅ One-click access to RadAI
+✅ No passwords needed
+
+Done! 🎉
+

@@ -1,0 +1,122 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    GOOGLE SIGN-IN - QUICK SETUP SUMMARY                       ║
+║                                                                                ║
+║                          YOU ARE HERE ✓ (in screenshot):                      ║
+║          Supabase → Authentication → Google Provider Settings                 ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+WHAT TO DO NOW (Super Simple!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You need TWO THINGS from Google:
+  1. Client ID
+  2. Client Secret
+
+TO GET THEM:
+
+1. Open: https://console.cloud.google.com
+   (Sign in if asked)
+
+2. Create a new project called "RadAI"
+
+3. Search for "Google+ API" and enable it
+
+4. Go to Credentials → Create OAuth Client ID
+   (It will ask you to set up consent screen - do it with your email)
+
+5. Set application type to "Web application"
+
+6. In "Redirect URLs" add this exact URL:
+   https://vqycjjkfqzmiueebmkkk.supabase.co/auth/v1/callback
+
+7. Click CREATE
+
+8. A popup shows Client ID and Client Secret
+   → Copy both
+
+THEN:
+
+9. Come back to the Supabase page (screenshot above)
+
+10. Paste Client ID in the empty field
+
+11. Paste Client Secret in the other empty field
+
+12. Click "Save changes" button (blue)
+
+DONE! ✅
+
+Google Sign-In now works!
+
+
+FILES FOR REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read these for more details:
+
+  • GOOGLE_OAUTH_FLOW.txt
+    (Step-by-step visual guide)
+
+  • GOOGLE_SIGNIN_CHECKLIST.md
+    (Checkbox list to follow)
+
+  • SETUP_GOOGLE_SIGNIN_SIMPLE.md
+    (Detailed instructions)
+
+
+LINKS YOU NEED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Google Cloud Console:
+  https://console.cloud.google.com
+
+Supabase Project:
+  https://app.supabase.com
+
+Supabase Project Settings (Google):
+  https://app.supabase.com/project/vqycjjkfqzmiueebmkkk/auth/providers
+
+(Or just go to: Supabase → Select project → Authentication → Google)
+
+
+IF CONFUSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read: GOOGLE_OAUTH_FLOW.txt
+
+It has detailed step-by-step instructions with pictures explained.
+
+
+IF YOU GET STUCK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Common issues:
+
+❌ "refused to connect"
+   ↓
+   You didn't finish setup. Follow all steps above.
+
+❌ Red text under fields
+   ↓
+   You pasted wrong. Copy and paste again carefully.
+
+❌ Still not working
+   ↓
+   Wait 2-3 minutes. Hard refresh (Ctrl+Shift+R). Try again.
+
+
+THAT'S IT!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Once you paste the credentials and click save in Supabase:
+
+✅ Google Sign-In is LIVE
+✅ Users can click "Continue with Google"
+✅ One-click login
+✅ Done!
+
+Total time: ~15 minutes
+
+Let's go! 🚀
+
