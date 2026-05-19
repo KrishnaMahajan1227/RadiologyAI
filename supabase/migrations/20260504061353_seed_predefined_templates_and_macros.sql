@@ -32,7 +32,10 @@ INSERT INTO auth.users (
   'authenticated',
   'authenticated',
   'system@radai.internal',
-  crypt('system-placeholder-not-for-login', gen_salt('bf')),
+  extensions.crypt(
+  'system-placeholder-not-for-login',
+  extensions.gen_salt('bf')
+),
   now(),
   now(),
   now(),
