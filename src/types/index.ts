@@ -6,14 +6,32 @@ export interface Profile {
   reports_generated: number;
   time_saved_minutes: number;
   dark_mode: boolean;
+
   hospital_name: string;
   hospital_address: string;
   hospital_phone: string;
+
   doctor_credentials: string;
   registration_number: string;
   designation: string;
   department: string;
   signature_line: boolean;
+
+  accreditation_nabh?: boolean;
+  accreditation_nabl?: boolean;
+  accreditation_iso?: boolean;
+
+  default_scan_type?: string;
+  report_language?: string;
+  signature_style?: string;
+  include_comparison_default?: boolean;
+  auto_fazekas?: boolean;
+
+  registration_body?: string;
+  registration_expiry?: string;
+  aerb_license?: string;
+  custom_disclaimer?: string;
+
   created_at: string;
   updated_at: string;
 }

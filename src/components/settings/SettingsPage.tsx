@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useEffect ,useState } from 'react';
 import {
   Save, Loader2, User, Bell, Keyboard, Moon, Sun, Building2, GraduationCap,
   FileText, Award, Settings, Scale, CheckCircle2, AlertTriangle, Clock,
@@ -93,9 +93,11 @@ const SCAN_TYPES = [
   'Interventional Radiology Report',
 ];
 
+
 /* -------------------------------------------------------------------------- */
 /*  REUSABLE TOGGLE COMPONENT                                                  */
 /* -------------------------------------------------------------------------- */
+
 
 function Toggle({
   checked,
@@ -257,6 +259,74 @@ export function SettingsPage() {
     (p as any)?.custom_disclaimer ?? ''
   );
 
+useEffect(() => {
+  if (!p) return;
+
+  setName(p.name ?? '');
+  setSpecialty(p.specialty ?? 'general');
+  setRole(p.role ?? 'radiologist');
+
+  setHospitalName(p.hospital_name ?? '');
+  setHospitalAddress(p.hospital_address ?? '');
+  setHospitalPhone(p.hospital_phone ?? '');
+
+  setDoctorCredentials(p.doctor_credentials ?? '');
+  setRegistrationNumber(p.registration_number ?? '');
+  setDesignation(p.designation ?? '');
+  setDepartment(p.department ?? '');
+
+  setSignatureLine(p.signature_line ?? true);
+
+  setAccreditationNabh(
+    (p as any)?.accreditation_nabh ?? false
+  );
+
+  setAccreditationNabl(
+    (p as any)?.accreditation_nabl ?? false
+  );
+
+  setAccreditationIso(
+    (p as any)?.accreditation_iso ?? false
+  );
+
+  setDefaultScanType(
+    (p as any)?.default_scan_type ?? ''
+  );
+
+  setReportLanguage(
+    (p as any)?.report_language ?? 'english'
+  );
+
+  setSignatureStyle(
+    (p as any)?.signature_style ?? 'text_only'
+  );
+
+  setIncludeComparisonDefault(
+    (p as any)?.include_comparison_default ?? false
+  );
+
+  setAutoFazekas(
+    (p as any)?.auto_fazekas ?? false
+  );
+
+  setRegistrationBody(
+    (p as any)?.registration_body ?? ''
+  );
+
+  setRegistrationExpiry(
+    (p as any)?.registration_expiry ?? ''
+  );
+
+  setAerbLicense(
+    (p as any)?.aerb_license ?? ''
+  );
+
+  setCustomDisclaimer(
+    (p as any)?.custom_disclaimer ?? ''
+  );
+
+}, [p]);  
+
   // ── Save handler ──────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!state.user) return;
@@ -295,13 +365,22 @@ export function SettingsPage() {
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+  console.error(error);
+  alert(error.message);
+  return;
+}
+if (error) throw error;
       if (data) dispatch({ type: 'SET_PROFILE', profile: data as Profile });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error('Save failed:', err);
-    } finally {
+    } catch (err: any) {
+  console.error('Save failed:', err);
+
+  alert(
+    err?.message || 'Settings save failed'
+  );
+} finally {
       setSaving(false);
     }
   };

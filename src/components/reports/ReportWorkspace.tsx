@@ -5,7 +5,8 @@ import {
   Stethoscope, SpellCheck, Eye, FileText,
   Activity, ClipboardCheck, AlertTriangle,
   ChevronRight, CheckSquare, TrendingUp,
-  Layers, Clock, RefreshCw,
+  Layers, Clock, RefreshCw, BookOpen, List,
+  Brain, Search, BarChart2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -14,8 +15,16 @@ import { MistakeDetector } from './MistakeDetector';
 import { buildReportHTML, openPDF } from './ReportHTML';
 import { supabase } from '../../lib/supabase';
 import {
-  runFullPipeline, suggestImprovements, detectErrors, generateDifferential,
-  generateDiseaseFormat, fixSpellingAndNegatives,
+  runFullPipeline,
+  suggestImprovements,
+  detectErrors,
+  generateDifferential,
+  generateDiseaseFormat,
+  fixSpellingAndNegatives,
+  getFollowUpQuestions,
+  generateModalitySpecificChecklist,
+  extractStructuredData,
+  generateReport,
 } from '../../lib/ai';
 import type { Suggestion, ReportError, Differential, StructuredData, Report } from '../../types';
 
@@ -23,12 +32,14 @@ import type { Suggestion, ReportError, Differential, StructuredData, Report } fr
 
 const SCAN_TYPES = [
   'CT Chest', 'CT Abdomen/Pelvis', 'CT Head', 'CT Spine', 'CT Extremity',
+  'CT KUB', 'CT Coronary Angiography', 'CT Pulmonary Angiography',
   'MRI Brain', 'MRI Spine', 'MRI Musculoskeletal', 'MRI Abdomen',
+  'MRI Knee', 'MRI Shoulder', 'MRI Hip', 'MRI Prostate',
   'X-Ray Chest', 'X-Ray Abdomen', 'X-Ray Extremity', 'X-Ray Spine',
   'Ultrasound Abdomen', 'Ultrasound Pelvis', 'Ultrasound Thyroid',
   'Ultrasound Obstetric', 'Ultrasound Breast', 'Ultrasound Musculoskeletal',
   'Ultrasound Scrotal', 'Ultrasound Renal', 'Ultrasound Carotid Doppler',
-  'PET-CT', 'Nuclear Medicine', 'Fluoroscopy', 'Mammography',
+  'PET-CT', 'Nuclear Medicine', 'Fluoroscopy', 'Mammography', 'DEXA',
 ];
 
 const COMMON_DISEASES = [
@@ -42,9 +53,9 @@ const COMMON_DISEASES = [
   'Bowel Obstruction', 'Hydronephrosis', 'Renal Cell Carcinoma',
   'Thyroid Nodule', 'Ovarian Cyst', 'Fibroid',
   'Breast Cancer', 'Prostate Cancer', 'Bone Metastasis',
+  'ACL Tear', 'Meniscal Tear', 'Rotator Cuff Tear',
 ];
 
-// Workflow steps
 const WORKFLOW_STEPS = [
   { id: 1, label: 'Patient & Scan' },
   { id: 2, label: 'Dictation' },
@@ -53,12 +64,11 @@ const WORKFLOW_STEPS = [
   { id: 5, label: 'Finalize' },
 ];
 
-// Inline clinical hints triggered by keyword presence
 const CLINICAL_HINTS: { keyword: string; hint: string; urgent?: boolean }[] = [
-  { keyword: 'kidney stone', hint: 'Document stone size, UVJ level, and check for hydronephrosis.' },
-  { keyword: 'nephrolithiasis', hint: 'Document stone size, UVJ level, and check for hydronephrosis.' },
+  { keyword: 'kidney stone', hint: 'Document stone size, UVJ level, HU density, and check for hydronephrosis.' },
+  { keyword: 'nephrolithiasis', hint: 'Document stone size, UVJ level, HU density, and check for hydronephrosis.' },
   { keyword: 'pneumonia', hint: 'Assess for pleural effusion, cavitation, or abscess.' },
-  { keyword: 'stroke', hint: 'ASPECT score, territory, midline shift, hemorrhagic transformation required.', urgent: true },
+  { keyword: 'stroke', hint: 'ASPECTS score, territory, midline shift, hemorrhagic transformation required.', urgent: true },
   { keyword: 'pulmonary nodule', hint: 'Apply Fleischner Society criteria. Document size, morphology, follow-up interval.' },
   { keyword: 'liver lesion', hint: 'Consider LI-RADS if cirrhotic background. Document arterial enhancement.' },
   { keyword: 'fracture', hint: 'Document displacement, angulation, alignment, joint surface involvement.' },
@@ -67,21 +77,14 @@ const CLINICAL_HINTS: { keyword: string; hint: string; urgent?: boolean }[] = [
   { keyword: 'intracranial hemorrhage', hint: 'Document hematoma volume, mass effect, midline shift, herniation.', urgent: true },
   { keyword: 'appendicitis', hint: 'Document appendix diameter, fat stranding, free fluid, perforation.' },
   { keyword: 'hydronephrosis', hint: 'Grade hydronephrosis. Identify obstructing cause. Document cortical thickness.' },
-  { keyword: 'cerebral atrophy',
-    hint: 'State whether atrophy is age-appropriate. For patients under 50, explicitly note if prominent for age. Apply GCA grading (Grade 0–3).',
-    urgent: false },
-  { keyword: 'white matter',
-    hint: 'Apply Fazekas grading (Grade 0–3). For patients under 50 with Fazekas ≥1, provide differential (microvascular, demyelination, migraine). Document DWI restriction status.',
-    urgent: false },
-  { keyword: 'demyelination',
-    hint: 'Document lesion distribution (periventricular, juxtacortical, infratentorial, spinal). Consider McDonald criteria applicability. Recommend neurology referral.',
-    urgent: true },
-  { keyword: 'fazekas',
-    hint: 'Fazekas I: non-specific, usually benign. Fazekas II+: consider vascular risk factor workup. Always correlate with patient age.',
-    urgent: false },
+  { keyword: 'cerebral atrophy', hint: 'State whether atrophy is age-appropriate. Apply GCA grading (Grade 0–3).', urgent: false },
+  { keyword: 'white matter', hint: 'Apply Fazekas grading (Grade 0–3). For patients under 50 with Fazekas ≥1, provide differential. Document DWI restriction status.', urgent: false },
+  { keyword: 'demyelination', hint: 'Document lesion distribution (periventricular, juxtacortical, infratentorial, spinal). Consider McDonald criteria. Recommend neurology referral.', urgent: true },
+  { keyword: 'fazekas', hint: 'Fazekas I: non-specific, usually benign. Fazekas II+: consider vascular risk factor workup. Always correlate with patient age.', urgent: false },
+  { keyword: 'pi-rads', hint: 'PI-RADS v2.1: score 1–2 (clinically significant cancer unlikely), 3 (equivocal), 4–5 (likely/highly likely). Document sector map location.', urgent: false },
+  { keyword: 'li-rads', hint: 'LI-RADS v2018: LR-1 (definitely benign) to LR-5 (definitely HCC). Document APHE, washout, capsule, size.', urgent: false },
 ];
 
-// Contradiction pairs for safety check
 const CONTRADICTION_PAIRS = [
   { findingKw: 'hydronephrosis', impressionKw: 'no abnormality', label: 'Hydronephrosis vs No Abnormality' },
   { findingKw: 'pleural effusion', impressionKw: 'no pleural', label: 'Pleural Effusion vs No Pleural Effusion' },
@@ -152,7 +155,6 @@ function computeQuality(technique: string, findings: string, impression: string,
   const activeHints = CLINICAL_HINTS.filter(h => combined.includes(h.keyword));
 
   const passedCritical = checks.filter(c => c.critical).every(c => c.passed);
-  // Critical checks = 12 pts each, non-critical = 6 pts each
   const totalScore = checks.reduce((sum, c) => sum + (c.passed ? (c.critical ? 12 : 6) : 0), 0);
   const maxScore = checks.reduce((sum, c) => sum + (c.critical ? 12 : 6), 0);
   const score = Math.round((totalScore / maxScore) * 100);
@@ -178,7 +180,6 @@ function computeQuality(technique: string, findings: string, impression: string,
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-/** Compact workflow progress bar */
 function WorkflowBar({ currentStep }: { currentStep: number }) {
   return (
     <div className="flex items-center gap-0 shrink-0 overflow-x-auto px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
@@ -199,7 +200,7 @@ function WorkflowBar({ currentStep }: { currentStep: number }) {
             {step.label}
           </div>
           {idx < WORKFLOW_STEPS.length - 1 && (
-            <ChevronRight size={10} className="text-gray-200 dark:border-gray-700 mx-0.5 shrink-0" />
+            <ChevronRight size={10} className="text-gray-200 dark:text-gray-700 mx-0.5 shrink-0" />
           )}
         </div>
       ))}
@@ -207,7 +208,6 @@ function WorkflowBar({ currentStep }: { currentStep: number }) {
   );
 }
 
-/** Lightweight inline contradiction alert — shown only when contradictions exist */
 function ContradictionAlert({ contradictions }: { contradictions: string[] }) {
   if (!contradictions.length) return null;
   return (
@@ -223,7 +223,6 @@ function ContradictionAlert({ contradictions }: { contradictions: string[] }) {
   );
 }
 
-/** Subtle clinical hint pill — non-blocking, dismissible */
 function ClinicalHintPill({ hint, urgent }: { hint: string; urgent?: boolean }) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
@@ -241,7 +240,6 @@ function ClinicalHintPill({ hint, urgent }: { hint: string; urgent?: boolean }) 
   );
 }
 
-/** Quality badge — compact, shown in report title bar */
 function QualityBadge({ quality, onClick }: { quality: QualityResult; onClick: () => void }) {
   return (
     <button
@@ -253,7 +251,6 @@ function QualityBadge({ quality, onClick }: { quality: QualityResult; onClick: (
   );
 }
 
-/** Collapsible quality checklist panel */
 function QualityChecklist({ quality, visible }: { quality: QualityResult; visible: boolean }) {
   if (!visible) return null;
   return (
@@ -276,7 +273,136 @@ function QualityChecklist({ quality, visible }: { quality: QualityResult; visibl
   );
 }
 
-/** Final review / finalize modal */
+/** Modality checklist panel — shows mandatory documentation items for the selected scan type */
+function ModalityChecklistPanel({
+  checklist,
+  visible,
+  loading,
+}: {
+  checklist: string[];
+  visible: boolean;
+  loading: boolean;
+}) {
+  if (!visible) return null;
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-indigo-100 dark:border-indigo-900/40 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center gap-2">
+        <List size={10} className="text-indigo-500" />
+        <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[1.8px]">Mandatory Documentation Items</p>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 px-4 py-3">
+          <Loader2 size={11} className="animate-spin text-indigo-400" />
+          <span className="text-[11px] text-gray-400">Loading checklist…</span>
+        </div>
+      ) : (
+        <div className="px-4 py-3 space-y-1.5 max-h-60 overflow-y-auto">
+          {checklist.map((item, idx) => (
+            <div key={idx} className="flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+              <span className="text-indigo-400 shrink-0 mt-0.5">·</span>
+              <span className="leading-snug">{item}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Structured data extraction preview panel */
+function StructuredDataPanel({ structured }: { structured: StructuredData }) {
+  if (!structured || Object.keys(structured).length === 0) return null;
+  const flat = Object.entries(structured).filter(([, v]) => v && typeof v !== 'object');
+  if (flat.length === 0) return null;
+  return (
+    <details className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <TrendingUp size={11} className="text-gray-400" />
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Extracted Structured Data</span>
+        <span className="ml-auto text-[9px] text-gray-300 dark:text-gray-600">{flat.length} fields</span>
+      </summary>
+      <div className="px-4 pb-4 grid grid-cols-3 gap-2 mt-2">
+        {flat.map(([k, v]) => (
+          <div key={k} className="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</p>
+            <p className="text-[11px] text-gray-700 dark:text-gray-300 font-medium">{String(v)}</p>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+/** Follow-up questions panel */
+function FollowUpQuestionsPanel({
+  questions,
+  onQuestionClick,
+  loading,
+}: {
+  questions: string[];
+  onQuestionClick: (q: string) => void;
+  loading: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
+  if (questions.length === 0 && !loading) return null;
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-amber-100 dark:border-amber-900/40 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setVisible(!visible)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors">
+        <Brain size={10} className="text-amber-500" />
+        <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-[1.8px]">
+          Follow-Up Questions {questions.length > 0 && `(${questions.length})`}
+        </p>
+        {loading && <Loader2 size={9} className="animate-spin text-amber-400 ml-1" />}
+        <ChevronDown size={10} className={`ml-auto text-amber-400 transition-transform ${visible ? 'rotate-180' : ''}`} />
+      </button>
+      {visible && (
+        <div className="px-4 py-3 space-y-1.5 max-h-48 overflow-y-auto">
+          {questions.map((q, idx) => (
+            <button
+              key={idx}
+              onClick={() => onQuestionClick(q)}
+              className="w-full text-left flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1.5 rounded-lg transition-colors">
+              <Search size={9} className="shrink-0 mt-0.5 opacity-50" />
+              <span className="leading-snug">{q}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Spelling fix result banner */
+function SpellingResultBanner({
+  result,
+  onDismiss,
+}: {
+  result: { corrected_report: string; spelling_fixes: Array<{ original: string; corrected: string }>; negatives_removed: Array<{ removed_text: string; reason: string }>; total_changes: number } | null;
+  onDismiss: () => void;
+}) {
+  if (!result || result.total_changes === 0) return null;
+  return (
+    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/20 border-b border-emerald-100 dark:border-emerald-900/40 flex items-start gap-2 shrink-0">
+      <SpellCheck size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
+          <strong>{result.total_changes} correction{result.total_changes > 1 ? 's' : ''} applied.</strong>
+          {result.spelling_fixes.length > 0 && (
+            <> Spelling: {result.spelling_fixes.slice(0, 5).map(f => `${f.original}→${f.corrected}`).join(', ')}{result.spelling_fixes.length > 5 ? ` +${result.spelling_fixes.length - 5} more` : ''}.</>
+          )}
+          {result.negatives_removed.length > 0 && <> Removed {result.negatives_removed.length} contradictory negative{result.negatives_removed.length > 1 ? 's' : ''}.</>}
+        </span>
+      </div>
+      <button onClick={onDismiss} className="shrink-0 text-emerald-400 hover:text-emerald-600 transition-colors">
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
+/** Finalization modal */
 function FinalizationModal({
   technique, findings, impression, quality,
   onConfirm, onClose,
@@ -286,7 +412,6 @@ function FinalizationModal({
   onConfirm: () => void; onClose: () => void;
 }) {
   const [approved, setApproved] = useState(false);
-
   const { state } = useApp();
   const p = state?.profile ?? {};
   const regNumber = (p as Record<string, unknown>)?.registration_number as string | undefined;
@@ -299,8 +424,7 @@ function FinalizationModal({
     { label: 'Measurements documented where applicable', done: /\d+(\.\d+)?\s*(mm|cm)/.test(findings + impression) },
     { label: 'Laterality verified where applicable', done: /right|left|bilateral|midline/.test(findings + impression) },
     { label: 'Clinical recommendations included', done: /recommend|follow.up|suggest|advise|referral/.test(impression.toLowerCase()) },
-    { label: 'MCI/NMC Reg. No. is set (legally required)',
-      done: !!(regNumber && regNumber.trim() !== '') },
+    { label: 'MCI/NMC Reg. No. is set (legally required)', done: !!(regNumber && regNumber.trim() !== '') },
     { label: 'Grading applied (Fazekas/GCA if brain MRI)',
       done: !/white matter|cerebral atro/i.test(findings + impression) ||
             /fazekas|gca grade/i.test(findings + impression) },
@@ -315,7 +439,6 @@ function FinalizationModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-800"
         onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
             <ClipboardCheck size={15} className="text-white" />
@@ -328,9 +451,7 @@ function FinalizationModal({
             {quality.badge}
           </span>
         </div>
-
-        {/* Checklist */}
-        <div className="px-6 py-4 space-y-1.5">
+        <div className="px-6 py-4 space-y-1.5 max-h-80 overflow-y-auto">
           {checklist.map((item, i) => (
             <div key={i} className={`flex items-center gap-2.5 py-1.5 px-3 rounded-lg
               ${item.done ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
@@ -344,13 +465,9 @@ function FinalizationModal({
             </div>
           ))}
         </div>
-
-        {/* Contradictions */}
         {quality.contradictions.length > 0 && (
           <div className="mx-6 mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-            <p className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1.5">
-              Impression Safety Violations
-            </p>
+            <p className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1.5">Impression Safety Violations</p>
             {quality.contradictions.map((c, i) => (
               <p key={i} className="text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-red-500 shrink-0" /> {c}
@@ -358,8 +475,6 @@ function FinalizationModal({
             ))}
           </div>
         )}
-
-        {/* Radiologist confirmation */}
         <div className="px-6 pb-4">
           <label className="flex items-start gap-2.5 cursor-pointer">
             <div
@@ -373,8 +488,6 @@ function FinalizationModal({
             </span>
           </label>
         </div>
-
-        {/* Actions */}
         <div className="px-6 pb-5 flex gap-2.5">
           <button onClick={onClose}
             className="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -390,7 +503,6 @@ function FinalizationModal({
   );
 }
 
-/** Auto-expanding textarea */
 function AutoTextarea({
   value, onChange, placeholder, minRows = 3, className = '', style,
 }: {
@@ -416,7 +528,6 @@ function AutoTextarea({
   );
 }
 
-/** Report section — Technique / Findings / Impression */
 function ReportSection({
   id, label, value, onChange, placeholder, variant = 'default', badge, minRows,
 }: {
@@ -522,7 +633,6 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-800"
         onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -551,8 +661,6 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
             </button>
           </div>
         </div>
-
-        {/* Patient info strip */}
         {linkedCase && (
           <div className="px-6 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <div className="grid grid-cols-4 gap-4 text-[11px]">
@@ -570,30 +678,22 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
             </div>
           </div>
         )}
-
-        {/* Report body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
           {report.technique && (
             <section>
-              <h3 className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">
-                Technique
-              </h3>
+              <h3 className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">Technique</h3>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-[1.8] whitespace-pre-wrap">{report.technique}</p>
             </section>
           )}
           {report.findings && (
             <section>
-              <h3 className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">
-                Findings
-              </h3>
+              <h3 className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">Findings</h3>
               {renderText(report.findings)}
             </section>
           )}
           {report.impression && (
             <section className="border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 bg-blue-50/40 dark:bg-blue-950/20">
-              <h3 className="text-[9px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-[2.5px] border-b border-blue-200 dark:border-blue-800 pb-1.5 mb-3">
-                Impression
-              </h3>
+              <h3 className="text-[9px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-[2.5px] border-b border-blue-200 dark:border-blue-800 pb-1.5 mb-3">Impression</h3>
               {renderText(report.impression)}
             </section>
           )}
@@ -637,7 +737,14 @@ export function ReportWorkspace() {
   const [refreshing, setRefreshing] = useState(false);
   const [generatingDisease, setGeneratingDisease] = useState(false);
   const [fixingSpelling, setFixingSpelling] = useState(false);
+  const [extractingOnly, setExtractingOnly] = useState(false);
+  const [loadingFollowUp, setLoadingFollowUp] = useState(false);
   const [error, setError] = useState<string>('');
+
+  // Modality checklist state
+  const [modalityChecklist, setModalityChecklist] = useState<string[]>([]);
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [showModalityChecklist, setShowModalityChecklist] = useState(false);
 
   // Template / macro state
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -670,7 +777,6 @@ export function ReportWorkspace() {
   const diseaseRef = useRef<HTMLDivElement>(null);
 
   const hasReport = !!(technique || findings || impression);
-
   const buildLearningContext = useCallback((): string => '', []);
 
   const { isListening, transcript, interimText, start: startVoice, stop: stopVoice, reset: resetVoice, supported: voiceSupported } = useVoiceInput(
@@ -681,7 +787,7 @@ export function ReportWorkspace() {
     ? (inputText ? inputText + ' ' + interimText : interimText)
     : inputText;
 
-  // ── Workflow step ──────────────────────────────────────────────────────────
+  // ── Workflow step ────────────────────────────────────────────────────────────
   const workflowStep = useMemo(() => {
     if (generating || generatingDisease) return 3;
     if (hasReport) return 4;
@@ -689,19 +795,37 @@ export function ReportWorkspace() {
     return 1;
   }, [hasReport, generating, generatingDisease, inputText]);
 
-  // ── Quality score ──────────────────────────────────────────────────────────
+  // ── Quality score ────────────────────────────────────────────────────────────
   const quality = useMemo(() =>
     hasReport ? computeQuality(technique, findings, impression, scanType) : null,
     [technique, findings, impression, scanType, hasReport]);
 
-  // ── Clinical hints ─────────────────────────────────────────────────────────
+  // ── Clinical hints ───────────────────────────────────────────────────────────
   const activeHints = useMemo(() => {
     if (!hasReport) return [];
     const combined = (findings + ' ' + impression).toLowerCase();
     return CLINICAL_HINTS.filter(h => combined.includes(h.keyword));
   }, [findings, impression, hasReport]);
 
-  // ── Macro detection ────────────────────────────────────────────────────────
+  // ── Load modality checklist when scan type changes ───────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoadingChecklist(true);
+      try {
+        const items = await generateModalitySpecificChecklist(scanType);
+        if (!cancelled) setModalityChecklist(items);
+      } catch {
+        // checklist is non-critical
+      } finally {
+        if (!cancelled) setLoadingChecklist(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [scanType]);
+
+  // ── Macro detection ──────────────────────────────────────────────────────────
   useEffect(() => {
     const slashIdx = inputText.lastIndexOf('/');
     if (slashIdx !== -1 && !inputText.slice(slashIdx).includes('\n')) {
@@ -727,7 +851,7 @@ export function ReportWorkspace() {
     inputRef.current?.focus();
   };
 
-  // ── Template handling ──────────────────────────────────────────────────────
+  // ── Template handling ────────────────────────────────────────────────────────
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplateId(templateId);
     if (!templateId) { setTemplateSections([]); return; }
@@ -759,7 +883,24 @@ export function ReportWorkspace() {
     return sections;
   };
 
-  // ── Generation ─────────────────────────────────────────────────────────────
+  // ── Extract only (no full report generation) ─────────────────────────────────
+  const handleExtractOnly = async () => {
+    if (!inputText.trim()) return;
+    setExtractingOnly(true);
+    setError('');
+    try {
+      const ctx = buildLearningContext();
+      const result = await extractStructuredData(inputText, scanType, ctx);
+      setStructured(result || {});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Extraction failed.';
+      setError(msg);
+    } finally {
+      setExtractingOnly(false);
+    }
+  };
+
+  // ── Full pipeline generation ─────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     setGenerating(true); setSaved(false); setSpellingResult(null); setError('');
@@ -777,6 +918,7 @@ export function ReportWorkspace() {
       setErrors(result.errors || []);
       setQuestions(result.questions || []);
 
+      // Extra template sections
       const reportData = result.report as Record<string, unknown>;
       const extraSections = reportData._extra_sections as Record<string, string> | undefined;
       if (selectedTemplateId && templateSections.length > 0 && extraSections) {
@@ -786,6 +928,7 @@ export function ReportWorkspace() {
         }));
       }
 
+      // Conditional template sections based on findings
       if (selectedTemplate) {
         const fullText = (result.report.findings || '') + ' ' + (result.report.impression || '');
         const conditionSections: { id: string; label: string; content: string }[] = [];
@@ -798,11 +941,23 @@ export function ReportWorkspace() {
         if (conditionSections.length > 0) setTemplateSections((prev) => [...prev, ...conditionSections]);
       }
 
+      // Generate differential in background
       if (result.structured?.body_part && result.structured?.modality) {
         try {
           const diff = await generateDifferential(result.report.findings || '', result.structured.body_part, result.structured.modality);
           setDifferential(diff);
         } catch { /* non-critical */ }
+      }
+
+      // Auto-generate follow-up questions in background
+      if (result.report.findings && result.structured) {
+        try {
+          setLoadingFollowUp(true);
+          const fullText = `TECHNIQUE:\n${result.report.technique}\n\nFINDINGS:\n${result.report.findings}\n\nIMPRESSION:\n${result.report.impression}`;
+          const followUpQs = await getFollowUpQuestions(fullText, result.structured);
+          if (followUpQs?.length) setQuestions(followUpQs);
+        } catch { /* non-critical */ }
+        finally { setLoadingFollowUp(false); }
       }
 
       if (!reportTitle) {
@@ -821,28 +976,71 @@ export function ReportWorkspace() {
     }
   };
 
+  // ── Regenerate report from existing structured data (without re-extracting) ──
+  const handleRegenFromStructured = async () => {
+    if (!structured || Object.keys(structured).length === 0) return;
+    setGenerating(true); setError('');
+    try {
+      const templateStr = getTemplateString();
+      const ctx = buildLearningContext();
+      const result = await generateReport(structured, scanType, templateStr, ctx);
+      if (result) {
+        setTechnique(result.technique || '');
+        setFindings(result.findings || '');
+        setImpression(result.impression || '');
+        if (result.validation_errors?.length) {
+          console.warn('[Validation]', result.validation_errors);
+        }
+      }
+    } catch (err) {
+      console.error('Regen failed:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // ── Disease quick format ─────────────────────────────────────────────────────
   const handleDiseaseFormat = async (disease: string) => {
     setGeneratingDisease(true); setShowDiseasePicker(false); setDiseaseSearch('');
     try {
       const modality = scanType.split(' ')[0];
-      const bodyPart = scanType.replace(/^(CT|MRI|X-Ray|Ultrasound|PET-CT|Nuclear)\s+/i, '');
+      const bodyPart = scanType.replace(/^(CT|MRI|X-Ray|Ultrasound|PET-CT|Nuclear|DEXA)\s+/i, '');
       const diseaseLower = disease.toLowerCase();
       const matchingTemplate = state.templates.find((t) => t.scan_type === scanType && t.name.toLowerCase().includes(diseaseLower.split(' ')[0]));
       if (matchingTemplate && !selectedTemplateId) handleTemplateSelect(matchingTemplate.id);
+
       const result = await generateDiseaseFormat(disease, modality, bodyPart);
       if (result.report) {
         setTechnique(result.report.technique || '');
         setFindings(result.report.findings || '');
         setImpression(result.report.impression || '');
         setReportTitle(`${scanType} - ${disease}`);
-        setStructured((prev) => ({ ...prev, diseases_detected: [disease], modality, body_part: bodyPart }));
+        setStructured((prev) => ({
+          ...prev,
+          diseases_detected: [disease],
+          modality,
+          body_part: bodyPart,
+          key_measurements: result.key_measurements,
+          mandatory_scoring_systems: result.mandatory_scoring_systems,
+          adjacent_organs_to_document: result.adjacent_organs_to_document,
+        }));
         if (!inputText.trim()) setInputText(`Disease: ${disease}\nModality: ${modality}\nBody Part: ${bodyPart}`);
         setShowQuality(true);
+
+        // Auto-fetch follow-up questions for disease context
+        try {
+          setLoadingFollowUp(true);
+          const fullText = `TECHNIQUE:\n${result.report.technique}\n\nFINDINGS:\n${result.report.findings}\n\nIMPRESSION:\n${result.report.impression}`;
+          const followUpQs = await getFollowUpQuestions(fullText, { diseases_detected: [disease], modality, body_part: bodyPart });
+          if (followUpQs?.length) setQuestions(followUpQs);
+        } catch { /* non-critical */ }
+        finally { setLoadingFollowUp(false); }
       }
     } catch (err) { console.error('Disease format failed:', err); }
     finally { setGeneratingDisease(false); }
   };
 
+  // ── Fix spelling & negatives ─────────────────────────────────────────────────
   const handleFixSpelling = async () => {
     if (!hasReport) return;
     setFixingSpelling(true);
@@ -862,17 +1060,20 @@ export function ReportWorkspace() {
     finally { setFixingSpelling(false); }
   };
 
+  // ── Refresh analysis (suggestions + errors) ──────────────────────────────────
   const handleRefreshAnalysis = async () => {
     if (!hasReport) return;
     setRefreshing(true);
     try {
       const fullText = `TECHNIQUE:\n${technique}\n\nFINDINGS:\n${findings}\n\nIMPRESSION:\n${impression}`;
-      const [newSuggestions, newErrors] = await Promise.all([
+      const [newSuggestions, newErrors, newFollowUp] = await Promise.all([
         suggestImprovements(fullText, structured),
         detectErrors(fullText, structured),
+        getFollowUpQuestions(fullText, structured).catch(() => [] as string[]),
       ]);
       setSuggestions(newSuggestions);
       setErrors(newErrors);
+      if (newFollowUp?.length) setQuestions(newFollowUp);
     } catch (err) { console.error('Refresh failed:', err); }
     finally { setRefreshing(false); }
   };
@@ -900,27 +1101,17 @@ export function ReportWorkspace() {
     const p = state.profile ?? ({} as Record<string, unknown>);
     const regNumber = (p as Record<string, unknown>)?.registration_number as string | undefined;
 
-    // Pre-export validation
     const exportWarnings: string[] = [];
     if (!regNumber || String(regNumber).trim() === '') {
-      exportWarnings.push(
-        'MCI/NMC Registration Number is not set. ' +
-        'Go to Settings → Profile to add it. ' +
-        'Reports without a registration number are not legally valid in India.'
-      );
+      exportWarnings.push('MCI/NMC Registration Number is not set. Go to Settings → Profile to add it. Reports without a registration number are not legally valid in India.');
     }
     const linkedCase = selectedCaseId ? state.cases.find((c) => c.id === selectedCaseId) : null;
     if (!linkedCase?.referring_doctor || linkedCase.referring_doctor === '-') {
-      exportWarnings.push(
-        'Referring Doctor is not linked. The PDF will show "Not provided" — consider adding it.'
-      );
+      exportWarnings.push('Referring Doctor is not linked. The PDF will show "Not provided" — consider adding it.');
     }
     if (quality && quality.contradictions.length > 0) {
-      exportWarnings.push(
-        'Report has unresolved contradictions: ' + quality.contradictions.join('; ')
-      );
+      exportWarnings.push('Report has unresolved contradictions: ' + quality.contradictions.join('; '));
     }
-
     if (exportWarnings.length > 0) {
       const proceed = window.confirm(
         'Export warnings:\n\n' + exportWarnings.map((w, i) => `${i + 1}. ${w}`).join('\n\n') +
@@ -987,6 +1178,7 @@ export function ReportWorkspace() {
     setDifferential([]); setQuestions([]);
     setSaved(false); setReportTitle(''); setSpellingResult(null);
     setTemplateSections([]); setShowQuality(false); setError('');
+    setLoadingFollowUp(false);
   };
 
   const handleLoadReport = (report: Report) => {
@@ -1011,7 +1203,7 @@ export function ReportWorkspace() {
   const linkedCase = selectedCaseId ? state.cases.find((c) => c.id === selectedCaseId) : null;
   const totalWords = (technique + findings + impression).split(/\s+/).filter(Boolean).length;
 
-  // ─── RENDER ────────────────────────────────────────────────────────────────
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-full bg-gray-50 dark:bg-gray-950">
       {viewingReport && <ReportViewerModal report={viewingReport} onClose={() => setViewingReport(null)} />}
@@ -1135,9 +1327,21 @@ export function ReportWorkspace() {
             <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
 
+          {/* Modality checklist toggle */}
+          <button
+            onClick={() => setShowModalityChecklist(!showModalityChecklist)}
+            className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-colors
+              ${showModalityChecklist
+                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            title="Toggle mandatory documentation checklist">
+            {loadingChecklist ? <Loader2 size={10} className="animate-spin" /> : <BookOpen size={10} />}
+            Checklist
+          </button>
+
           <div className="flex-1" />
 
-          {/* Inline error/warning count — small, subtle */}
+          {/* Error / warning counts */}
           {errorCount > 0 && (
             <span className="flex items-center gap-1 text-[10px] font-semibold text-red-500 dark:text-red-400">
               <AlertCircle size={10} /> {errorCount} error{errorCount > 1 ? 's' : ''}
@@ -1149,7 +1353,7 @@ export function ReportWorkspace() {
             </span>
           )}
 
-          {/* MCI reg warning — show in toolbar */}
+          {/* MCI reg warning */}
           {!((state.profile as Record<string, unknown> | null)?.registration_number as string) && (
             <span className="flex items-center gap-1 text-[10px] font-semibold text-red-500 dark:text-red-400
               bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg">
@@ -1157,7 +1361,7 @@ export function ReportWorkspace() {
             </span>
           )}
 
-          {/* Saved reports archive */}
+          {/* Saved reports */}
           <button
             onClick={() => setShowSavedReports(true)}
             className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -1167,6 +1371,18 @@ export function ReportWorkspace() {
           {hasReport && (
             <>
               <div className="w-px h-4 bg-gray-200 dark:bg-gray-700" />
+
+              {/* Regen from structured (if structured data available) */}
+              {structured && Object.keys(structured).length > 0 && (
+                <button
+                  onClick={handleRegenFromStructured}
+                  disabled={generating}
+                  title="Regenerate report from extracted structured data"
+                  className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-violet-700 dark:hover:text-violet-400 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-50">
+                  {generating ? <Loader2 size={10} className="animate-spin" /> : <BarChart2 size={10} />}
+                  Regen
+                </button>
+              )}
 
               {/* Fix & Clean */}
               <button
@@ -1246,22 +1462,8 @@ export function ReportWorkspace() {
           </div>
         )}
 
-        {/* ── Context Banners: spelling, template ──────────────────────────── */}
-        {spellingResult && spellingResult.total_changes > 0 && (
-          <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/20 border-b border-emerald-100 dark:border-emerald-900/40 flex items-center gap-2 shrink-0">
-            <SpellCheck size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="text-[11px] text-emerald-700 dark:text-emerald-300 flex-1">
-              <strong>{spellingResult.total_changes} correction{spellingResult.total_changes > 1 ? 's' : ''} applied.</strong>
-              {spellingResult.spelling_fixes.length > 0 && (
-                <> Spelling: {spellingResult.spelling_fixes.map(f => `${f.original}→${f.corrected}`).join(', ')}.</>
-              )}
-              {spellingResult.negatives_removed.length > 0 && <> Removed contradictory negatives.</>}
-            </span>
-            <button onClick={() => setSpellingResult(null)} className="shrink-0 text-emerald-400 hover:text-emerald-600 transition-colors">
-              <X size={12} />
-            </button>
-          </div>
-        )}
+        {/* ── Context Banners ──────────────────────────────────────────────── */}
+        <SpellingResultBanner result={spellingResult} onDismiss={() => setSpellingResult(null)} />
 
         {selectedTemplate && (
           <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/30 flex items-center gap-2 shrink-0">
@@ -1292,8 +1494,6 @@ export function ReportWorkspace() {
                 rows={3}
                 className="w-full resize-none bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-[13px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-mono leading-relaxed"
               />
-
-              {/* Listening indicator */}
               {isListening && (
                 <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg">
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
@@ -1303,7 +1503,6 @@ export function ReportWorkspace() {
                   </span>
                 </div>
               )}
-
               {/* Macro dropdown */}
               {showMacroDropdown && filteredMacros.length > 0 && (
                 <div ref={macroRef}
@@ -1361,6 +1560,16 @@ export function ReportWorkspace() {
               {generating
                 ? <><Loader2 size={12} className="animate-spin" /> Generating…</>
                 : <><Wand2 size={12} /> {selectedTemplateId ? 'Fill Template & Generate' : 'Generate Report'}</>}
+            </button>
+
+            {/* Extract structured data only */}
+            <button
+              onClick={handleExtractOnly}
+              disabled={extractingOnly || !inputText.trim()}
+              title="Extract structured data without generating a full report"
+              className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-violet-700 dark:hover:text-violet-400 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              {extractingOnly ? <Loader2 size={10} className="animate-spin" /> : <TrendingUp size={10} />}
+              Extract Only
             </button>
 
             {/* Disease quick-format */}
@@ -1427,7 +1636,6 @@ export function ReportWorkspace() {
                   ? `Template "${selectedTemplate?.name}" loaded. Dictate findings and click Generate.`
                   : 'Select a scan type, link a patient case, then dictate your findings.'}
               </p>
-              {/* Progress checklist */}
               <div className="flex flex-wrap gap-2 justify-center mb-2">
                 {[
                   { label: 'Scan & Template', done: !!selectedTemplateId },
@@ -1445,7 +1653,6 @@ export function ReportWorkspace() {
                   </span>
                 ))}
               </div>
-              {/* Template section preview */}
               {selectedTemplateId && extraTemplateSections.length > 0 && (
                 <div className="mt-5 w-full max-w-md space-y-2 text-left">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center mb-2">Template Sections</p>
@@ -1504,6 +1711,13 @@ export function ReportWorkspace() {
               {/* Quality checklist — collapsible */}
               {quality && <QualityChecklist quality={quality} visible={showQuality} />}
 
+              {/* Modality checklist — collapsible */}
+              <ModalityChecklistPanel
+                checklist={modalityChecklist}
+                visible={showModalityChecklist}
+                loading={loadingChecklist}
+              />
+
               {/* Contradiction alert — inline, non-blocking */}
               {quality && <ContradictionAlert contradictions={quality.contradictions} />}
 
@@ -1551,6 +1765,13 @@ export function ReportWorkspace() {
                 badge="Conclusion" minRows={5}
               />
 
+              {/* Follow-up questions panel */}
+              <FollowUpQuestionsPanel
+                questions={questions}
+                onQuestionClick={handleQuestionClick}
+                loading={loadingFollowUp}
+              />
+
               {/* Extra template sections */}
               {extraTemplateSections.map((sec) => (
                 <section key={sec.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -1574,22 +1795,7 @@ export function ReportWorkspace() {
               ))}
 
               {/* Structured data extraction — collapsed by default */}
-              {structured && Object.keys(structured).length > 0 && (
-                <details className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                  <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <TrendingUp size={11} className="text-gray-400" />
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Extracted Structured Data</span>
-                  </summary>
-                  <div className="px-4 pb-4 grid grid-cols-3 gap-2 mt-2">
-                    {Object.entries(structured).filter(([, v]) => v && typeof v !== 'object').map(([k, v]) => (
-                      <div key={k} className="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</p>
-                        <p className="text-[11px] text-gray-700 dark:text-gray-300 font-medium">{String(v)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
+              <StructuredDataPanel structured={structured} />
 
               {/* Bottom action row */}
               <div className="flex items-center justify-between pt-1 pb-3">

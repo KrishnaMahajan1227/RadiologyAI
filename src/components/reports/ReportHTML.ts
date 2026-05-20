@@ -384,6 +384,17 @@ export function buildReportHTML(opts: {
   const hospitalAddress = p?.hospital_address      ? String(p.hospital_address)      : '';
   const hospitalPhone   = p?.hospital_phone        ? String(p.hospital_phone)        : '';
   const department      = p?.department            ? String(p.department)            : 'Radiology';
+const customDisclaimer = p?.custom_disclaimer
+  ? String(p.custom_disclaimer)
+  : '';
+
+const reportLanguage = p?.report_language
+  ? String(p.report_language)
+  : 'english';
+
+const signatureStyle = p?.signature_style
+  ? String(p.signature_style)
+  : 'full_signature';
 
   // Accreditation badges
   const hasNABH = p?.accreditation_nabh === true || p?.accreditation_nabh === 'true';
@@ -396,7 +407,16 @@ export function buildReportHTML(opts: {
   ].filter(Boolean);
 
   const clinicalInfo   = sanitiseClinicalInfo(opts.clinicalInfo);
-  const comparisonText = opts.comparisonText || 'No prior imaging available for comparison.';
+  const includeComparison =
+  p?.include_comparison_default === true;
+
+const comparisonText =
+  includeComparison
+    ? (
+        opts.comparisonText ||
+        'No prior imaging available for comparison.'
+      )
+    : '';
 
   const refDoc = (!opts.referringDoc || opts.referringDoc === '-')
     ? '<span class="missing-field">&#9888;&nbsp;Not provided</span>'
@@ -460,7 +480,10 @@ export function buildReportHTML(opts: {
     </div>` : '';
 
   // ── Comparison block (Feature 8) ────────────────────────────────────────────
-  const comparisonWordCount  = comparisonText.trim().split(/\s+/).length;
+  const comparisonWordCount =
+  comparisonText
+    ? comparisonText.trim().split(/\s+/).length
+    : 0;
   const showComparisonBlock  = comparisonWordCount > 8;
 
   // ── Section HTML ────────────────────────────────────────────────────────────
@@ -471,10 +494,13 @@ export function buildReportHTML(opts: {
       const isTechnique  = s.label.toLowerCase() === 'technique';
       const isFindings   = s.label.toLowerCase() === 'findings';
 
-      const rawContent = isImpression
-        ? injectGrading(s.content, opts.patientScan)
-        : s.content;
-
+const rawContent = isImpression
+  ? (
+      p?.auto_fazekas === false
+        ? s.content
+        : injectGrading(s.content, opts.patientScan)
+    )
+  : s.content;
       const rendered = renderMarkdownBold(rawContent);
 
       // ── Impression ──────────────────────────────────────────────────────────
@@ -590,8 +616,11 @@ export function buildReportHTML(opts: {
       <div class="sig-unit__name">${secRad.name.startsWith('Dr') ? escHtml(secRad.name) : `Dr. ${escHtml(secRad.name.replace(/^Dr\.?\s*/i, ''))}`}</div>
       <div class="sig-unit__creds">${escHtml(secRad.credentials)}</div>
       <div class="sig-unit__desig">${escHtml(secRad.role || 'Co-Reporting Radiologist')}</div>
-      <div class="sig-unit__esign">&#9679;&nbsp;E-SIGNED</div>
-    </div>` : '';
+${signatureStyle !== 'text_only' ? `
+<div class="sig-unit__esign">
+  &#9679;&nbsp;E-SIGNED
+</div>
+` : ''}    </div>` : '';
 
   // ── Barcode placeholder (Feature 9) ─────────────────────────────────────────
   const barcodeHTML = `
@@ -619,7 +648,7 @@ export function buildReportHTML(opts: {
   // ════════════════════════════════════════════════════════════════════════════
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${reportLanguage === 'english' ? 'en' : 'hi'}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1373,7 +1402,19 @@ export function buildReportHTML(opts: {
       padding-top: 6pt;
       margin-top: 14pt;
     }
+.report-disclaimer {
+  margin-top: 14pt;
+  padding: 8pt 10pt;
+  border: 1pt solid #ddd;
+  background: #fafafa;
 
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 8pt;
+  color: #666;
+
+  line-height: 1.5;
+  border-radius: 2pt;
+}
 
     /* ══════════════════════════════════════════════════════════════════════
        BARCODE STRIP  (Feature 9 — print only)
@@ -1572,7 +1613,11 @@ export function buildReportHTML(opts: {
         <div class="sig-unit__esign">&#9679;&nbsp;E-SIGNED</div>
       </div>
     </div>
-
+${customDisclaimer ? `
+<div class="report-disclaimer">
+  ${escHtml(customDisclaimer)}
+</div>
+` : ''}
     <!-- ── Confidential ──────────────────────────────────────────────── -->
     <div class="confidential-notice">Confidential &mdash; For Clinical Use Only &mdash; Not to be Disclosed Without Authorisation</div>
 
