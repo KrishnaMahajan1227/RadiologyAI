@@ -28,6 +28,62 @@ import {
 } from '../../lib/ai';
 import type { Suggestion, ReportError, Differential, StructuredData, Report } from '../../types';
 
+
+// ── Utility: strip markdown code fences and parse JSON safely ────────────────
+function stripFencesAndParse(raw: string): Record<string, unknown> | null {
+  try {
+    const clean = raw
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+    if (clean.startsWith('{')) return JSON.parse(clean);
+  } catch { /* ignore */ }
+  return null;
+}
+
+// ── extractFieldOrRaw: pulls a specific field from a JSON string or returns plain text ──
+// Handles: plain text, JSON objects, markdown-fenced JSON, nested objects, case-insensitive keys
+function extractFieldOrRaw(value: string | undefined | null, field: string): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+
+  // Fast path: doesn't look like JSON
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('```')) return trimmed;
+
+  const parsed = stripFencesAndParse(trimmed);
+  if (!parsed) return trimmed; // not valid JSON, return as-is (plain text is fine)
+
+  // Exact key match
+  if (typeof parsed[field] === 'string') return (parsed[field] as string).trim();
+
+  // Case-insensitive key match (handles "Technique" vs "technique", "Findings" vs "findings")
+  const matchKey = Object.keys(parsed).find(k => k.toLowerCase() === field.toLowerCase());
+  if (matchKey && typeof parsed[matchKey] === 'string') return (parsed[matchKey] as string).trim();
+
+  // If we got a JSON blob but can't find the field, fall back to full_report reconstruction
+  const fullReport = parsed['full_report'] as string | undefined;
+  if (fullReport) {
+    // Try to extract the section from full_report text
+    const sectionRe = new RegExp(`(?:^|\\n)${field}[:\\s]*\\n([\\s\\S]*?)(?=\\n[A-Z][A-Z ]{2,}[:\\n]|$)`, 'i');
+    const m = fullReport.match(sectionRe);
+    if (m?.[1]) return m[1].trim();
+  }
+
+  // Nothing worked — return trimmed input so UI shows something rather than blank
+  return trimmed;
+}
+
+// ── safeText: returns the best readable text from any value ──────────────────
+function safeText(value: string | undefined | null): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('```')) return trimmed;
+  const parsed = stripFencesAndParse(trimmed);
+  if (!parsed) return trimmed;
+  return (parsed['full_report'] as string) || (parsed['findings'] as string) || trimmed;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SCAN_TYPES = [
@@ -615,16 +671,20 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
 
   const renderText = (text: string) =>
     text.split('\n').filter(l => l.trim()).map((line, i) => {
-      const hasBold = line.includes('**');
-      const parts = hasBold
-        ? line.split(/(\*\*.*?\*\*)/g).map((part, j) =>
-          part.startsWith('**') && part.endsWith('**')
-            ? <strong key={j} className="text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>
-            : <span key={j}>{part}</span>)
-        : [line];
+      // Strip any residual markdown bold markers
+      const cleanLine = line.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/, '');
+      // Detect bullet lines (•, -, *, or numbered like "1.")
+      const isBullet = /^(\u2022|[-*]|\d+\.)\s/.test(cleanLine.trim());
       return (
-        <p key={i} className="text-[13px] leading-[1.8] whitespace-pre-wrap text-gray-700 dark:text-gray-300 mb-1">
-          {parts}
+        <p
+          key={i}
+          className={`text-[13px] leading-[1.8] whitespace-pre-wrap mb-1 ${
+            isBullet
+              ? 'pl-4 text-gray-700 dark:text-gray-300'
+              : 'text-gray-700 dark:text-gray-300'
+          }`}
+        >
+          {cleanLine}
         </p>
       );
     });
@@ -723,6 +783,7 @@ export function ReportWorkspace() {
   const [scanType, setScanType] = useState('CT Chest');
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
   const [technique, setTechnique] = useState('');
+  const [clinicalInfo, setClinicalInfo] = useState('');
   const [findings, setFindings] = useState('');
   const [impression, setImpression] = useState('');
   const [structured, setStructured] = useState<StructuredData>({});
@@ -776,7 +837,7 @@ export function ReportWorkspace() {
   const macroRef = useRef<HTMLDivElement>(null);
   const diseaseRef = useRef<HTMLDivElement>(null);
 
-  const hasReport = !!(technique || findings || impression);
+  const hasReport = !!(technique || clinicalInfo || findings || impression);
   const buildLearningContext = useCallback((): string => '', []);
 
   const { isListening, transcript, interimText, start: startVoice, stop: stopVoice, reset: resetVoice, supported: voiceSupported } = useVoiceInput(
@@ -872,10 +933,11 @@ export function ReportWorkspace() {
 
   const getAllSections = (): { label: string; content: string }[] => {
     const sections: { label: string; content: string }[] = [];
-    if (technique) sections.push({ label: 'Technique', content: technique });
-    if (findings) sections.push({ label: 'Findings', content: findings });
-    if (impression) sections.push({ label: 'Impression', content: impression });
-    const standardLabels = ['technique', 'findings', 'impression'];
+    if (technique)    sections.push({ label: 'Technique',           content: technique });
+    if (clinicalInfo) sections.push({ label: 'Clinical Information', content: clinicalInfo });
+    if (findings)     sections.push({ label: 'Findings',            content: findings });
+    if (impression)   sections.push({ label: 'Impression',          content: impression });
+    const standardLabels = ['technique', 'clinical information', 'findings', 'impression'];
     for (const sec of templateSections) {
       if (!standardLabels.includes(sec.label.toLowerCase()) && sec.content.trim())
         sections.push({ label: sec.label, content: sec.content });
@@ -911,9 +973,25 @@ export function ReportWorkspace() {
       if (!result || !result.report) throw new Error('Invalid response from AI service');
 
       setStructured(result.structured || {});
-      setTechnique(result.report.technique || '');
-      setFindings(result.report.findings || '');
-      setImpression(result.report.impression || '');
+
+      // Helper: parse result.report which may itself be a JSON string
+      let reportObj = result.report as Record<string, unknown>;
+      if (typeof reportObj === 'string') {
+        const parsed = stripFencesAndParse(reportObj as unknown as string);
+        if (parsed) reportObj = parsed;
+      }
+
+      const rawTechnique   = reportObj.technique          as string | undefined;
+      const rawClinical    = reportObj.clinical_information as string | undefined
+                          || reportObj['Clinical Information'] as string | undefined
+                          || reportObj['Clinical Indication']  as string | undefined;
+      const rawFindings    = reportObj.findings            as string | undefined;
+      const rawImpression  = reportObj.impression          as string | undefined;
+
+      setTechnique (extractFieldOrRaw(rawTechnique,   'technique'));
+      setClinicalInfo(extractFieldOrRaw(rawClinical,  'clinical_information'));
+      setFindings  (extractFieldOrRaw(rawFindings,    'findings'));
+      setImpression(extractFieldOrRaw(rawImpression,  'impression'));
       setSuggestions(result.suggestions || []);
       setErrors(result.errors || []);
       setQuestions(result.questions || []);
@@ -930,7 +1008,7 @@ export function ReportWorkspace() {
 
       // Conditional template sections based on findings
       if (selectedTemplate) {
-        const fullText = (result.report.findings || '') + ' ' + (result.report.impression || '');
+        const fullText = (reportObj.findings as string || '') + ' ' + (reportObj.impression as string || '');
         const conditionSections: { id: string; label: string; content: string }[] = [];
         for (const cond of selectedTemplate.conditions ?? []) {
           if (cond.trigger_keyword && fullText.toLowerCase().includes(cond.trigger_keyword.toLowerCase())) {
@@ -944,16 +1022,16 @@ export function ReportWorkspace() {
       // Generate differential in background
       if (result.structured?.body_part && result.structured?.modality) {
         try {
-          const diff = await generateDifferential(result.report.findings || '', result.structured.body_part, result.structured.modality);
+          const diff = await generateDifferential(extractFieldOrRaw(reportObj.findings as string, 'findings') || '', result.structured.body_part, result.structured.modality);
           setDifferential(diff);
         } catch { /* non-critical */ }
       }
 
       // Auto-generate follow-up questions in background
-      if (result.report.findings && result.structured) {
+      if (reportObj.findings && result.structured) {
         try {
           setLoadingFollowUp(true);
-          const fullText = `TECHNIQUE:\n${result.report.technique}\n\nFINDINGS:\n${result.report.findings}\n\nIMPRESSION:\n${result.report.impression}`;
+          const fullText = [technique && `TECHNIQUE:\n${technique}`, clinicalInfo && `CLINICAL INFORMATION:\n${clinicalInfo}`, findings && `FINDINGS:\n${findings}`, impression && `IMPRESSION:\n${impression}`].filter(Boolean).join('\n\n');
           const followUpQs = await getFollowUpQuestions(fullText, result.structured);
           if (followUpQs?.length) setQuestions(followUpQs);
         } catch { /* non-critical */ }
@@ -985,9 +1063,10 @@ export function ReportWorkspace() {
       const ctx = buildLearningContext();
       const result = await generateReport(structured, scanType, templateStr, ctx);
       if (result) {
-        setTechnique(result.technique || '');
-        setFindings(result.findings || '');
-        setImpression(result.impression || '');
+        setTechnique(extractFieldOrRaw(result.technique as string, 'technique'));
+        setClinicalInfo(extractFieldOrRaw((result.clinical_information || result['Clinical Information']) as string, 'clinical_information'));
+        setFindings(extractFieldOrRaw(result.findings as string, 'findings'));
+        setImpression(extractFieldOrRaw(result.impression as string, 'impression'));
         if (result.validation_errors?.length) {
           console.warn('[Validation]', result.validation_errors);
         }
@@ -1011,9 +1090,9 @@ export function ReportWorkspace() {
 
       const result = await generateDiseaseFormat(disease, modality, bodyPart);
       if (result.report) {
-        setTechnique(result.report.technique || '');
-        setFindings(result.report.findings || '');
-        setImpression(result.report.impression || '');
+        setTechnique(extractFieldOrRaw(result.report.technique, 'technique'));
+        setFindings(extractFieldOrRaw(result.report.findings, 'findings'));
+        setImpression(extractFieldOrRaw(result.report.impression, 'impression'));
         setReportTitle(`${scanType} - ${disease}`);
         setStructured((prev) => ({
           ...prev,
@@ -1030,7 +1109,7 @@ export function ReportWorkspace() {
         // Auto-fetch follow-up questions for disease context
         try {
           setLoadingFollowUp(true);
-          const fullText = `TECHNIQUE:\n${result.report.technique}\n\nFINDINGS:\n${result.report.findings}\n\nIMPRESSION:\n${result.report.impression}`;
+          const fullText = [result.report.technique && `TECHNIQUE:\n${result.report.technique}`, result.report.findings && `FINDINGS:\n${result.report.findings}`, result.report.impression && `IMPRESSION:\n${result.report.impression}`].filter(Boolean).join('\n\n');
           const followUpQs = await getFollowUpQuestions(fullText, { diseases_detected: [disease], modality, body_part: bodyPart });
           if (followUpQs?.length) setQuestions(followUpQs);
         } catch { /* non-critical */ }
@@ -1045,16 +1124,18 @@ export function ReportWorkspace() {
     if (!hasReport) return;
     setFixingSpelling(true);
     try {
-      const fullText = `TECHNIQUE:\n${technique}\n\nFINDINGS:\n${findings}\n\nIMPRESSION:\n${impression}`;
+      const fullText = [technique && `TECHNIQUE:\n${technique}`, clinicalInfo && `CLINICAL INFORMATION:\n${clinicalInfo}`, findings && `FINDINGS:\n${findings}`, impression && `IMPRESSION:\n${impression}`].filter(Boolean).join('\n\n');
       const result = await fixSpellingAndNegatives(fullText);
       setSpellingResult(result);
       if (result.total_changes > 0 && result.corrected_report) {
-        const techMatch = result.corrected_report.match(/TECHNIQUE:\s*([\s\S]*?)(?=FINDINGS:|$)/i);
-        const findMatch = result.corrected_report.match(/FINDINGS:\s*([\s\S]*?)(?=IMPRESSION:|$)/i);
-        const impMatch = result.corrected_report.match(/IMPRESSION:\s*([\s\S]*?)$/i);
-        if (techMatch?.[1]) setTechnique(techMatch[1].trim());
-        if (findMatch?.[1]) setFindings(findMatch[1].trim());
-        if (impMatch?.[1]) setImpression(impMatch[1].trim());
+        const techMatch  = result.corrected_report.match(/TECHNIQUE:\s*([\s\S]*?)(?=CLINICAL INFORMATION:|FINDINGS:|$)/i);
+        const clinMatch  = result.corrected_report.match(/CLINICAL INFORMATION:\s*([\s\S]*?)(?=FINDINGS:|$)/i);
+        const findMatch  = result.corrected_report.match(/FINDINGS:\s*([\s\S]*?)(?=IMPRESSION:|$)/i);
+        const impMatch   = result.corrected_report.match(/IMPRESSION:\s*([\s\S]*?)$/i);
+        if (techMatch?.[1])  setTechnique(techMatch[1].trim());
+        if (clinMatch?.[1])  setClinicalInfo(clinMatch[1].trim());
+        if (findMatch?.[1])  setFindings(findMatch[1].trim());
+        if (impMatch?.[1])   setImpression(impMatch[1].trim());
       }
     } catch (err) { console.error('Spelling fix failed:', err); }
     finally { setFixingSpelling(false); }
@@ -1065,7 +1146,7 @@ export function ReportWorkspace() {
     if (!hasReport) return;
     setRefreshing(true);
     try {
-      const fullText = `TECHNIQUE:\n${technique}\n\nFINDINGS:\n${findings}\n\nIMPRESSION:\n${impression}`;
+      const fullText = [technique && `TECHNIQUE:\n${technique}`, clinicalInfo && `CLINICAL INFORMATION:\n${clinicalInfo}`, findings && `FINDINGS:\n${findings}`, impression && `IMPRESSION:\n${impression}`].filter(Boolean).join('\n\n');
       const [newSuggestions, newErrors, newFollowUp] = await Promise.all([
         suggestImprovements(fullText, structured),
         detectErrors(fullText, structured),
@@ -1089,7 +1170,7 @@ export function ReportWorkspace() {
     inputRef.current?.focus();
   };
 
-  const fullReport = `TECHNIQUE:\n${technique}\n\nFINDINGS:\n${findings}\n\nIMPRESSION:\n${impression}`;
+  const fullReport = [technique && `TECHNIQUE:\n${technique}`, clinicalInfo && `CLINICAL INFORMATION:\n${clinicalInfo}`, findings && `FINDINGS:\n${findings}`, impression && `IMPRESSION:\n${impression}`].filter(Boolean).join('\n\n');
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(fullReport);
@@ -1150,7 +1231,7 @@ export function ReportWorkspace() {
         title: reportTitle || `${scanType} Report`,
         input_text: inputText,
         structured_data: structured,
-        technique, findings, impression,
+        technique, clinical_information: clinicalInfo, findings, impression,
         generated_text: fullReport,
         edited_text: fullReport,
         suggestions, errors,
@@ -1173,7 +1254,7 @@ export function ReportWorkspace() {
   };
 
   const handleClearReport = () => {
-    setTechnique(''); setFindings(''); setImpression('');
+    setTechnique(''); setClinicalInfo(''); setFindings(''); setImpression('');
     setStructured({}); setSuggestions([]); setErrors([]);
     setDifferential([]); setQuestions([]);
     setSaved(false); setReportTitle(''); setSpellingResult(null);
@@ -1183,9 +1264,10 @@ export function ReportWorkspace() {
 
   const handleLoadReport = (report: Report) => {
     setReportTitle(report.title || '');
-    setTechnique(report.technique || '');
-    setFindings(report.findings || '');
-    setImpression(report.impression || '');
+    setTechnique(extractFieldOrRaw(report.technique, 'technique'));
+    setClinicalInfo(extractFieldOrRaw((report as Record<string,unknown>).clinical_information as string, 'clinical_information'));
+    setFindings(extractFieldOrRaw(report.findings, 'findings'));
+    setImpression(extractFieldOrRaw(report.impression, 'impression'));
     setInputText(report.input_text || '');
     setStructured(report.structured_data ?? {});
     setSuggestions(report.suggestions ?? []);
@@ -1201,7 +1283,7 @@ export function ReportWorkspace() {
   const standardLabels = ['technique', 'findings', 'impression'];
   const extraTemplateSections = templateSections.filter((s) => !standardLabels.includes(s.label.toLowerCase()));
   const linkedCase = selectedCaseId ? state.cases.find((c) => c.id === selectedCaseId) : null;
-  const totalWords = (technique + findings + impression).split(/\s+/).filter(Boolean).length;
+  const totalWords = (technique + clinicalInfo + findings + impression).split(/\s+/).filter(Boolean).length;
 
   // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
@@ -1727,6 +1809,14 @@ export function ReportWorkspace() {
                 value={technique} onChange={setTechnique}
                 placeholder="Describe the imaging technique, contrast used, and scan parameters…"
                 badge="Required" minRows={2}
+              />
+
+              {/* ─ Clinical Information */}
+              <ReportSection
+                id="clinical_information" label="Clinical Information" variant="default"
+                value={clinicalInfo} onChange={setClinicalInfo}
+                placeholder="State the clinical indication and reason for examination…"
+                badge="Indication" minRows={2}
               />
 
               {/* ─ Findings (primary workspace) */}

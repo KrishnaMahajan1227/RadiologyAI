@@ -604,7 +604,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             {[{l:'Platform',h:'#platform'},{l:'Workflow',h:'#workflow'},{l:'Security',h:'#security'},{l:'Certifications',h:'#certifications'},{l:'Integrations',h:'#integrations'},{l:'FAQ',h:'#faq'}].map(n => (
               <a key={n.l} href={n.h} onClick={() => setMob(false)} style={{
                 display:'block', padding:'16px 18px', borderRadius:8,
-                color:'var(--text)', textDecoration:'none', fontWeight:500, fontSize:'1rem',
+                color:'var(--text)', textDecoration:'none', fontWeight:500,
                 letterSpacing:'0.04em', textTransform:'uppercase', fontSize:'0.88rem',
               }}>{n.l}</a>
             ))}

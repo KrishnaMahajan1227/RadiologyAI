@@ -6,52 +6,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// ─── Gemini model config ──────────────────────────────────────────────────────
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-const FAST_MODEL = "gemini-2.5-flash";
-const SMART_MODEL = "gemini-2.5-flash";
+
+// ─── callGemini — properly uses systemInstruction ────────────────────────────
+// BUG FIX 1: Old version merged system+user into one text block.
+//            Now we use Gemini's native systemInstruction field.
+// BUG FIX 2: Old callGemini had wrong parameter order (model slipped in as jsonMode).
+// BUG FIX 3: temperature raised to 0.45 — less robotic output.
+// BUG FIX 4: maxOutputTokens raised to 16384 for report generation (was 8192).
 
 async function callGemini(
-  messages: object[],
-  jsonMode = false
+  systemPrompt: string,
+  userPrompt: string,
+  jsonMode = false,
+  maxTokens = 8192
 ): Promise<string> {
-  const systemMessage =
-    (messages.find((m: any) => m.role === "system") as any)?.content || "";
-
-  const userMessages = messages
-    .filter((m: any) => m.role !== "system")
-    .map((m: any) => m.content)
-    .join("\n\n");
-
-  const prompt = `
-${systemMessage}
-
-${userMessages}
-`;
-
   const response = await fetch(
     `${GEMINI_API_URL}?key=${Deno.env.get("GEMINI_API_KEY")}`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
         contents: [
           {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
+            role: "user",
+            parts: [{ text: userPrompt }],
           },
         ],
         generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 8192,
-          responseMimeType: jsonMode
-            ? "application/json"
-            : "text/plain",
+          temperature: 0.45,
+          maxOutputTokens: maxTokens,
+          responseMimeType: jsonMode ? "application/json" : "text/plain",
         },
       }),
     }
@@ -59,23 +49,20 @@ ${userMessages}
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(
-      `Gemini API error: ${response.status} - ${err}`
-    );
+    throw new Error(`Gemini API error: ${response.status} - ${err}`);
   }
 
   const data = await response.json();
-
-  return (
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
-  );
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
-async function extractStructuredData(inputText: string, scanType: string, learningContext: string): Promise<object> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a radiology AI assistant. Extract structured clinical data from radiology dictation/notes.
+// ─── extractStructuredData ────────────────────────────────────────────────────
+async function extractStructuredData(
+  inputText: string,
+  scanType: string,
+  learningContext: string
+): Promise<object> {
+  const systemPrompt = `You are a radiology AI assistant. Extract structured clinical data from radiology dictation/notes.
 Return a JSON object with these fields:
 {
   "modality": "CT|MRI|X-Ray|Ultrasound|PET|Nuclear Medicine|Fluoroscopy|Mammography",
@@ -93,15 +80,11 @@ Return a JSON object with these fields:
   "diseases_detected": ["list of specific diseases/conditions mentioned or implied"]
 }
 ${learningContext ? `User preference context: ${learningContext}` : ""}
-Return only valid JSON.`,
-    },
-    {
-      role: "user",
-      content: `Scan type: ${scanType || "Unknown"}\n\nDictation/Notes:\n${inputText}`,
-    },
-  ];
+Return only valid JSON.`;
 
-  const raw = await callGemini(messages, FAST_MODEL, true);
+  const userPrompt = `Scan type: ${scanType || "Unknown"}\n\nDictation/Notes:\n${inputText}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true);
   try {
     return JSON.parse(raw);
   } catch {
@@ -109,19 +92,43 @@ Return only valid JSON.`,
   }
 }
 
-async function generateReport(structuredData: object, scanType: string, template: string | null, inputText: string, learningContext: string): Promise<object> {
-  let templateInstructions = "Use standard radiology report format with Technique, Findings, and Impression sections.";
-  let sectionList = ["Technique", "Findings", "Impression"];
+// ─── generateReport ───────────────────────────────────────────────────────────
+// BUG FIX 5: maxTokens now 16384 for report generation — prevents truncated reports.
+// BUG FIX 6: System prompt restructured — Gemini now gets proper role context.
+// BUG FIX 7: full_report always built from sections with proper markdown.
+
+async function generateReport(
+  structuredData: object,
+  scanType: string,
+  template: string | null,
+  inputText: string,
+  learningContext: string
+): Promise<object> {
+  let templateInstructions =
+    "Use standard radiology report format with Technique, Clinical Information, Findings, and Impression sections.";
+  let sectionList = ["Technique", "Clinical Information", "Findings", "Impression"];
 
   if (template) {
     try {
       const sections = JSON.parse(template);
       sectionList = sections.map((s: { label: string }) => s.label);
-      const sectionDetails = sections.map((s: { label: string; placeholder: string; required: boolean; type: string; options?: string[] }) => {
-        let desc = `- ${s.label}${s.required ? " (REQUIRED)" : " (optional)"}: ${s.placeholder || "Fill in appropriate content"}`;
-        if (s.options?.length) desc += `. Options: ${s.options.join(", ")}`;
-        return desc;
-      }).join("\n");
+      const sectionDetails = sections
+        .map(
+          (s: {
+            label: string;
+            placeholder: string;
+            required: boolean;
+            type: string;
+            options?: string[];
+          }) => {
+            let desc = `- ${s.label}${s.required ? " (REQUIRED)" : " (optional)"}: ${
+              s.placeholder || "Fill in appropriate content"
+            }`;
+            if (s.options?.length) desc += `. Options: ${s.options.join(", ")}`;
+            return desc;
+          }
+        )
+        .join("\n");
 
       templateInstructions = `A TEMPLATE has been selected by the radiologist. You MUST generate content for EACH section in this template.
 
@@ -131,18 +138,18 @@ Section details:
 ${sectionDetails}
 
 CRITICAL TEMPLATE RULES:
-1. You MUST return a JSON object with a key for EVERY template section label (exact match, case-sensitive)
+1. Return a JSON object with a key for EVERY template section label (exact match, case-sensitive)
 2. Fill EACH section with clinically appropriate content based on the dictation
 3. If the dictation mentions specific findings, put them in the CORRECT template section
-4. If a section has no relevant findings from the dictation, write a brief normal statement
+4. If a section has no relevant findings, write a brief normal statement
 5. Do NOT leave any required section empty
-6. The dictation is the PRIMARY source of clinical information - the template is the STRUCTURE
-7. Write like a real radiologist - concise, precise, professional medical language
-8. When dictation says something is normal, write it as a normal statement in the appropriate section
+6. The dictation is the PRIMARY source of clinical information — the template is the STRUCTURE
+7. Write like a real consultant radiologist — concise, precise, professional
+8. When dictation says something is normal, write it as a normal statement
 9. When dictation describes a finding, write it clearly with measurements if provided
-10. Do NOT include contradictory statements - if a finding IS present, do NOT also say "no evidence of" that finding`;
+10. Do NOT include contradictory statements`;
     } catch {
-      // Template parse failed, use default
+      // Template parse failed — use default
     }
   }
 
@@ -151,194 +158,137 @@ CRITICAL TEMPLATE RULES:
     ? `Return JSON with a key for EACH template section (exact labels: ${sectionList.join(", ")}), plus:
 {
   ${sectionList.map((s) => `"${s}": "content for this section",`).join("\n  ")}
-  "full_report": "complete formatted report with all sections",
+  "full_report": "complete formatted report with all sections in plain text with markdown bold (**text**) for abnormalities",
   "negatives_removed": ["list of contradictory negative statements that were automatically removed"]
 }`
     : `Return JSON with:
 {
-  "technique": "complete technique section",
-  "findings": "complete findings section with organized paragraphs",
-  "impression": "numbered impression list, most significant first",
-  "full_report": "complete formatted report",
+  "technique": "complete technique section — 2-4 professional sentences",
+  "clinical_information": "1-2 sentences restating the clinical indication professionally",
+  "findings": "complete findings section — organ-wise structured paragraphs, abnormalities described first then grouped normals, **bold** for all abnormalities and key measurements",
+  "impression": "numbered impression list, most significant first, maximum 5-8 numbered points, **bold** for primary diagnosis, each point one concise sentence",
+  "full_report": "complete formatted report with section headings and all content",
   "negatives_removed": ["list of contradictory negative statements that were automatically removed"]
 }`;
 
-  const systemPrompt = `You are a highly experienced senior consultant radiologist with 25+ years of reporting experience in premium hospitals and diagnostic centers (Apollo, Fortis, Manipal, Sparsh, etc.).
+  const systemPrompt = `You are a highly experienced senior consultant radiologist with 35+ years of subspecialty reporting experience at premier institutions (AIIMS, Apollo, Fortis, Manipal, Tata Memorial).
 
-Generate highly realistic, consultant-level radiology reports exactly like real hospital-issued reports. The final output must look and read like an authentic radiologist's finalized report — concise, clinically strong, naturally written, and professionally formatted.
+Your reports are the gold standard used for medicolegal defence, academic publication, peer review, and resident training. Every report you produce must be indistinguishable from the best output of the most experienced radiologist in the department.
 
-CRITICAL AI BEHAVIOR:
-Even if the doctor dictates only a short abnormal finding, intelligently complete the remaining clinically relevant findings for the entire study.
+════════════════════════════════════════════════
+CORE INTELLIGENCE DIRECTIVE — NON-NEGOTIABLE:
+════════════════════════════════════════════════
 
-Example:
-If the doctor dictates: "4 mm stone in right kidney"
-You must intelligently generate:
-- Liver findings
-- Gall bladder findings
-- Pancreas findings
-- Spleen findings
-- Both kidneys (highlighting the stone)
-- Urinary bladder
-- Relevant pelvic/abdominal findings
-while naturally highlighting the important pathology.
+Even if the doctor dictates only 3–5 words, you produce a COMPLETE professional report. A brief dictation does NOT mean a brief report.
 
-REPORT WRITING STYLE:
-- Use natural radiologist language.
-- Maintain concise but complete reporting style.
-- Do NOT generate AI-style essays.
-- Do NOT over-explain normal findings.
-- Do NOT create repetitive sections.
-- Do NOT generate robotic text.
-- Reports should feel efficient, human-written, and clinically confident.
-- The report should read like: "A real consultant radiologist finalized this report."
-- NOT like: "An AI expanded a prompt."
+• "Lt kidney 8mm stone" → you write a full USG/CT abdomen report covering both kidneys, ureters, bladder, liver, gallbladder, pancreas, spleen, adrenals, prostate/uterus, aorta, and all adjacent structures.
+• ALL structures within the field of view are documented — either with their abnormality characterised, or compressed into a brief grouped normal statement.
+• NEVER omit adjacent structures — this is a medicolegal requirement.
+• Normal findings are compressed efficiently: "Gallbladder, pancreas, and spleen are unremarkable." is correct. Silence is not.
+• Do NOT fabricate specific measurements not provided — use qualitative normal descriptors tied to reference ranges.
 
-REPORT STRUCTURE:
-1. Technique / Indication (if available)
-2. Findings
-3. Impression
+════════════════════════════════════════════════
+REPORT STRUCTURE — ALWAYS IN THIS EXACT ORDER:
+════════════════════════════════════════════════
 
-FINDINGS SECTION RULES:
-- Organ-wise structured reporting.
-- Use short readable paragraphs.
-- Mention normal findings briefly and naturally.
-- Focus more attention on abnormal findings.
-- Avoid duplicate subsections.
-- Keep the flow similar to real hospital reports.
-- Group normal organs together when appropriate (e.g., "Gallbladder, pancreas, spleen: Unremarkable.")
+TECHNIQUE
+2–4 sentences: imaging modality, body region, coverage, patient position, contrast (agent/route/dose/phases or "No intravenous contrast was administered"), relevant protocol parameters, technical limitations if any.
 
-IMPRESSION SECTION RULES:
-- Short, strong, consultant-style conclusion.
-- Use concise numbered points.
-- Highlight major diagnoses in **BOLD** markdown.
-- Avoid unnecessary AI recommendations.
-- Only add clinical correlation if genuinely needed.
-- Maximum 3-5 points.
+CLINICAL INFORMATION
+1–2 sentences: professionally restate the clinical indication as inferred from the dictation. Do not copy verbatim.
 
-FORMATTING & TYPOGRAPHY:
-- Use clean hospital-style formatting.
-- Organize findings in organ-wise format.
-- Use short professional paragraphs.
-- IMPORTANT abnormalities, measurements, diagnoses, and critical findings MUST be highlighted in **BOLD** markdown.
-- Keep normal findings concise and realistic.
-- Do not over-explain obvious normal structures.
-- Each organ/structure should appear ONCE in findings.
-- Use newlines to separate organ paragraphs for readability.
+FINDINGS
+Organised systematically by anatomical region per modality:
+1. Abnormal findings described first within each organ/system — full characterisation (morphology, size if given, location, signal/density characteristics, secondary signs, associated findings).
+2. Normal structures compressed into grouped statements — never omitted.
+3. Every structure within the field of view accounted for.
+4. Bilateral comparison always stated for paired structures.
+5. Precise anatomical descriptors and standardised radiology terminology.
+6. **Bold markdown** applied to: all abnormalities, key measurements of pathology, primary diagnoses, critical negative findings (e.g., "**No hydronephrosis**" when a stone is present).
+7. Do NOT bold: routine normal anatomy, standard negative statements in isolation.
 
-TECHNIQUE:
-- Keep short and professional (1-2 sentences).
-- Example: "Ultrasound examination of the abdomen was performed using a curvilinear transducer."
-- Only mention technique specifics that are clinically relevant.
+IMPRESSION
+Numbered list. 5–8 points maximum unless complexity demands more.
+• Most urgent/critical finding always numbered 1.
+• Each point is a single concise diagnostic statement — maximum two sentences.
+• **Bold** for the primary diagnosis on point 1.
+• Scoring system grades in parentheses within the relevant point (e.g., Fazekas Grade II, BI-RADS 4A, LI-RADS LR-4).
+• Clinically indicated recommendations within impression points or as RECOMMENDATIONS section.
+• NEVER say "as described above" or "as mentioned in findings."
 
-MODALITY-SPECIFIC COMPLETENESS:
+RECOMMENDATIONS (only when clinically indicated)
+Specific actionable items with modality, urgency, and timeframe. Omit if none required.
 
-For ULTRASOUND ABDOMEN: Always cover liver, gallbladder, pancreas, spleen, both kidneys, urinary bladder, aorta as relevant.
-For CT ABDOMEN/PELVIS: Cover liver, pancreas, spleen, both kidneys, bladder, adrenals, bowel, vasculature, lymph nodes.
-For CT CHEST: Cover lungs, mediastinum, heart, hilum, pleura, chest wall, diaphragm.
-For MRI BRAIN: Cover all lobes, ventricles, subarachnoid spaces, brainstem, cerebellum, signal abnormalities.
-For SPINE MRI: Cover vertebral bodies, discs, spinal canal, neural foramina, cord signal, ligaments.
-For MAMMOGRAPHY: Cover both breasts, all quadrants, comparison views, skin, axilla.
-For CHEST X-RAY: Cover lungs, mediastinum, heart, diaphragm, soft tissues, bones.
-For MSK STUDIES: Cover bones, joints, soft tissues, neurovascular structures.
-For DOPPLER: Cover flow velocities, resistive indices, spectral analysis, color flow mapping.
-For RENAL ULTRASOUND: Cover both kidneys (size, cortex, medulla, pelvis), bladder, prostate/uterus as relevant.
+════════════════════════════════════════════════
+MANDATORY ADJACENT STRUCTURE COVERAGE:
+════════════════════════════════════════════════
 
-CRITICAL DON'Ts:
-- Do NOT generate one-line reports.
-- Do NOT generate essay-style reports with unnecessary paragraphs.
-- Do NOT repeat findings across sections.
-- Do NOT produce robotic AI text.
-- Do NOT overuse recommendations like "Clinical correlation advised."
-- Do NOT over-describe normal anatomy.
-- Do NOT create duplicate sections.
-- Do NOT make the report feel template-generated.
-- Do NOT use phrases like "as noted above" or "as described" — each organ gets its own standalone description.
+USG ABDOMEN: liver (size, echotexture, focal lesions), gallbladder (wall, calculi), CBD (calibre), pancreas (visible parts), spleen (size, echotexture), both kidneys (size, echotexture, CMD, pelvis, calculi, hydronephrosis), bladder (wall, contents, residual), aorta calibre, para-aortic nodes, ascites.
 
-RADIOLOGIST THINKING PATTERN:
-Think like a real senior radiologist completing a report:
-1. Identify the PRIMARY pathology/abnormality first
-2. Assess relevant normal anatomy naturally
-3. Keep impression clinically strong and concise
-4. Avoid filler phrases and unnecessary sentences
-5. Write for clinical decision-making, not for completeness
+CT ABDOMEN/PELVIS: liver (all 8 segments if lesion; morphology; surface; focal lesion with LI-RADS if indicated), gallbladder, biliary tree (IHBD, CBD diameter), pancreas (duct, parenchyma), spleen, adrenal glands bilaterally, both kidneys (Bosniak if cystic), ureters (full course to VUJ), bladder, bowel (appendix, colon, small bowel), mesentery/omentum, retroperitoneum (nodes, IVC, aorta with calibre), pelvic organs (uterus+ovaries or prostate+SVs), free fluid/gas, lung bases, bones (lumbar/sacrum/hips), psoas muscles, abdominal wall.
 
-FINDINGS SECTION PRIORITY:
-Abnormal findings deserve attention and description.
-Normal findings are mentioned briefly and naturally grouped.
+CT CHEST: lungs (upper/mid/lower zones bilaterally — pattern per zone), airways (trachea, main bronchi, lobar, segmental), pleura bilaterally (effusion size/character, pneumothorax), mediastinum (anterior/middle/posterior compartments, all nodal stations), hila bilaterally, cardiac (size, chambers, pericardium), great vessels (aortic root, ascending, arch, descending — calibre), chest wall (ribs, sternum, clavicles, shoulder girdles), diaphragm bilaterally, axillary nodes bilaterally, thoracic spine, visualised upper abdomen (liver, spleen, adrenals, upper poles).
 
-GOOD FINDINGS FLOW:
-"Liver: Normal size and echotexture without focal lesion.
-Pancreas: Unremarkable.
-**Right kidney: 11.2 cm with normal echotexture. 4 mm echogenic focus in renal parenchyma consistent with calculus. No hydronephrosis.**
-Left kidney: Normal, 10.8 cm. No stone or dilatation.
-Urinary bladder: Distended with normal wall thickness, no calculi."
+CT HEAD/BRAIN: brain parenchyma (lobes, WM, BG, thalami, corpus callosum, brainstem, cerebellum), ventricles, CSF spaces, extra-axial spaces bilaterally, calvarium, skull base, paranasal sinuses (all 4 per side), mastoid air cells bilaterally, orbits (if in field), soft tissues.
 
-BAD FINDINGS FLOW:
-Long paragraphs explaining every organ in detail. Repetition. Overly verbose normal findings.
+MRI BRAIN: all parenchymal structures per sequence (T1/T2/FLAIR/DWI/ADC/SWI/post-contrast T1), paranasal sinuses, mastoid air cells bilaterally, pituitary and infundibulum, cavernous sinuses, calvarium, skull base.
 
-BOLD MARKDOWN USAGE:
-Apply **BOLD** ONLY to:
-- Abnormalities and pathology
-- Measurements of abnormal findings
-- Clinical diagnoses
-- Important negative findings that clarify status (e.g., "**No hydronephrosis**" if stone present)
+MRI SPINE: alignment with Cobb angle if scoliosis, each vertebral level (height, end plates, Modic type if present), each disc (height, T2 signal, morphology, direction), canal AP dimension per level, cord signal (myelopathy mandatory to document), conus level, cauda equina, foraminal compromise bilaterally per level, facet joints, ligamentum flavum, paraspinal muscles, visualised organs at each level.
 
-DO NOT BOLD:
-- Normal anatomy
-- Routine descriptors
-- Standard negative findings in isolation
+CT KUB: both kidneys, each stone (size in mm, location, HU density), hydronephrosis grade, periureteric stranding, both ureters full course, bladder, prostate/uterus, adrenals, abdominal/pelvic incidentals, lung bases, bones.
 
-IMPRESSION FORMATTING:
-Use bullet points or numbered list.
-Each point is a separate clinical statement.
-Main diagnosis should be first and in **BOLD**.
+ULTRASOUND THYROID: each lobe (size: length × AP × transverse in cm, volume = 0.479 × L × AP × W, normal <10 ml per lobe), isthmus thickness, echogenicity, nodules (ACR TI-RADS per nodule: size, composition, echogenicity, shape, margin, echogenic foci — TI-RADS score), vascular pattern on Doppler, cervical lymph nodes levels II–VI bilaterally, parathyroid regions, trachea (midline, deviation, compression).
 
-Example of GOOD impression:
-• **Acute right lower lobe pneumonia**
-• No pleural effusion
-• Cardiac silhouette normal
+════════════════════════════════════════════════
+FORMATTING RULES:
+════════════════════════════════════════════════
 
-Example of BAD impression:
-"There is pneumonia. Clinical correlation is advised. Follow-up recommended."
+• Organ-wise paragraphs separated by blank lines.
+• Each organ appears exactly ONCE in findings.
+• Short efficient paragraphs — not essays.
+• Group clearly normal organs when appropriate: "Gallbladder, pancreas, and spleen are unremarkable."
+• Section headings in CAPS: TECHNIQUE, CLINICAL INFORMATION, FINDINGS, IMPRESSION, RECOMMENDATIONS.
+• Report must be readable in under 30 seconds by a clinician.
+• No AI filler phrases ("it is important to note that", "it should be mentioned", "it is worth noting").
+• No template-dumping of unrelated structures.
+• Write as if a senior consultant signed this report today.
 
-FINAL OUTPUT REQUIREMENT:
-The report must feel polished, concise, clinically accurate, visually clean, and indistinguishable from a premium hospital-issued radiology report (Sparsh / Apollo / Fortis / Manipal style). Readable in under 20-30 seconds by clinicians. Suitable for direct PACS/HIS/EMR export. Feel like a senior radiologist wrote it efficiently — NOT like AI generated it.
+${learningContext ? `Adapt style per user preferences: ${learningContext}` : ""}
 
 ${templateInstructions}
-${learningContext ? `Adapt your language to match these user preferences: ${learningContext}` : ""}
 
 ${responseFormat}`;
 
-  const messages = [
-    {
-      role: "system",
-      content: systemPrompt,
-    },
-    {
-      role: "user",
-      content: `Generate a professional radiology report for:
+  const userPrompt = `Generate a complete professional radiology report.
+
 Scan type: ${scanType}
 
-Doctor's dictation/input:
-${inputText || "No specific dictation provided - generate based on structured data."}
+Doctor's dictation / clinical input:
+${inputText || "No specific dictation — generate based on structured data below."}
 
 Extracted structured data:
 ${JSON.stringify(structuredData, null, 2)}
 
-Remember: This is a COMPLETE study. Cover all relevant anatomy professionally while maintaining a natural, experienced radiologist's tone. The final report must feel like it was written by a seasoned radiologist, not AI-generated.`,
-    },
-  ];
+REQUIREMENT: This is a COMPLETE study. Every relevant anatomical structure within the field of view must be accounted for. The report must feel written by a seasoned senior radiologist — not AI-generated. No shortcuts, no truncation, no template dumping.`;
 
-  const raw = await callGemini(messages, true);
+  // BUG FIX 5: 16384 tokens for report generation
+  const raw = await callGemini(systemPrompt, userPrompt, true, 16384);
+
   try {
     const result = JSON.parse(raw);
 
-    // If template mode, ensure standard fields exist for compatibility
+    // Template mode: map standard fields if not already present
     if (isTemplateMode) {
-      // Map template sections to standard fields if they exist
       const techniqueSection = sectionList.find((s) => s.toLowerCase() === "technique");
-      const findingsSection = sectionList.find((s) => s.toLowerCase().includes("findings"));
-      const impressionSection = sectionList.find((s) => s.toLowerCase() === "impression");
+      const findingsSection = sectionList.find((s) =>
+        s.toLowerCase().includes("finding")
+      );
+      const impressionSection = sectionList.find((s) =>
+        s.toLowerCase() === "impression"
+      );
+      const clinicalSection = sectionList.find((s) =>
+        s.toLowerCase().includes("clinical")
+      );
 
       if (!result.technique && techniqueSection && result[techniqueSection]) {
         result.technique = result[techniqueSection];
@@ -349,32 +299,56 @@ Remember: This is a COMPLETE study. Cover all relevant anatomy professionally wh
       if (!result.impression && impressionSection && result[impressionSection]) {
         result.impression = result[impressionSection];
       }
+      if (!result.clinical_information && clinicalSection && result[clinicalSection]) {
+        result.clinical_information = result[clinicalSection];
+      }
 
-      // Build extra sections (non-standard ones)
-      const standardLabels = ["technique", "findings", "impression"];
+      // Collect non-standard extra sections
+      const standardLabels = ["technique", "clinical_information", "findings", "impression"];
       const extraSections: Record<string, string> = {};
       for (const [key, value] of Object.entries(result)) {
-        if (typeof value === "string" && !standardLabels.includes(key.toLowerCase()) &&
-            key !== "full_report" && key !== "negatives_removed") {
+        if (
+          typeof value === "string" &&
+          !standardLabels.includes(key.toLowerCase()) &&
+          key !== "full_report" &&
+          key !== "negatives_removed"
+        ) {
           extraSections[key] = value;
         }
       }
       result._extra_sections = extraSections;
     }
 
-    // Ensure required fields always exist
+    // BUG FIX 6: Always ensure required fields exist
     if (!result.technique) result.technique = "";
+    if (!result.clinical_information) result.clinical_information = "";
     if (!result.findings) result.findings = "";
     if (!result.impression) result.impression = "";
-    if (!result.full_report) {
-      result.full_report = `TECHNIQUE:\n${result.technique}\n\nFINDINGS:\n${result.findings}\n\nIMPRESSION:\n${result.impression}`;
-    }
     if (!result.negatives_removed) result.negatives_removed = [];
+
+    // BUG FIX 7: Build proper full_report with section headings if not provided
+    if (!result.full_report || result.full_report.trim().length < 50) {
+      const parts: string[] = [];
+      if (result.technique) parts.push(`TECHNIQUE\n${result.technique}`);
+      if (result.clinical_information)
+        parts.push(`CLINICAL INFORMATION\n${result.clinical_information}`);
+      if (result.findings) parts.push(`FINDINGS\n${result.findings}`);
+      if (result.impression) parts.push(`IMPRESSION\n${result.impression}`);
+      // Append any extra template sections
+      if (result._extra_sections) {
+        for (const [k, v] of Object.entries(result._extra_sections as Record<string, string>)) {
+          if (v) parts.push(`${k.toUpperCase()}\n${v}`);
+        }
+      }
+      result.full_report = parts.join("\n\n");
+    }
 
     return result;
   } catch {
+    // If JSON parse fails entirely, return raw text as findings
     return {
-      technique: "Technique not available.",
+      technique: "",
+      clinical_information: "",
       findings: raw,
       impression: "",
       full_report: raw,
@@ -383,11 +357,12 @@ Remember: This is a COMPLETE study. Cover all relevant anatomy professionally wh
   }
 }
 
-async function suggestImprovements(reportText: string, structuredData: object): Promise<object[]> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a senior radiologist reviewing a colleague's report for quality. Provide ONLY genuinely useful, specific suggestions.
+// ─── suggestImprovements ──────────────────────────────────────────────────────
+async function suggestImprovements(
+  reportText: string,
+  structuredData: object
+): Promise<object[]> {
+  const systemPrompt = `You are a senior radiologist reviewing a colleague's report for quality. Provide ONLY genuinely useful, specific suggestions.
 
 IMPORTANT: Only flag REAL issues. Do NOT flag:
 - Normal statements about structures (e.g., "The left kidney is unremarkable" is FINE)
@@ -409,28 +384,30 @@ Return JSON array:
   "suggestion": "specific actionable suggestion",
   "location": "technique|findings|impression|general"
 }]
-Return empty array [] if the report is clinically sound. Return only JSON.`,
-    },
-    {
-      role: "user",
-      content: `Report text:\n${reportText}\n\nExtracted data:\n${JSON.stringify(structuredData, null, 2)}`,
-    },
-  ];
+Return empty array [] if the report is clinically sound. Return only JSON.`;
 
-  const raw = await callGemini(messages, true);
+  const userPrompt = `Report text:\n${reportText}\n\nExtracted data:\n${JSON.stringify(
+    structuredData,
+    null,
+    2
+  )}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true);
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : (parsed.suggestions ?? []);
+    return Array.isArray(parsed) ? parsed : parsed.suggestions ?? [];
   } catch {
     return [];
   }
 }
 
-async function generateDifferential(findings: string, bodyPart: string, modality: string): Promise<object[]> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are an expert radiologist generating differential diagnoses.
+// ─── generateDifferential ─────────────────────────────────────────────────────
+async function generateDifferential(
+  findings: string,
+  bodyPart: string,
+  modality: string
+): Promise<object[]> {
+  const systemPrompt = `You are an expert radiologist generating differential diagnoses.
 Based on the imaging findings, provide a ranked differential diagnosis list.
 Return JSON array:
 [{
@@ -441,31 +418,27 @@ Return JSON array:
   "against_features": ["finding against this"],
   "next_steps": "recommended workup"
 }]
-Return only a JSON array, ordered by likelihood.`,
-    },
-    {
-      role: "user",
-      content: `Modality: ${modality}\nBody Part: ${bodyPart}\nFindings: ${findings}`,
-    },
-  ];
+Return only a JSON array, ordered by likelihood.`;
 
-  const raw = await callGemini(messages, true);
+  const userPrompt = `Modality: ${modality}\nBody Part: ${bodyPart}\nFindings: ${findings}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true);
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : (parsed.differentials ?? []);
+    return Array.isArray(parsed) ? parsed : parsed.differentials ?? [];
   } catch {
     return [];
   }
 }
 
-async function detectErrors(reportText: string, structuredData: object): Promise<object[]> {
+// ─── detectErrors ─────────────────────────────────────────────────────────────
+async function detectErrors(
+  reportText: string,
+  structuredData: object
+): Promise<object[]> {
   const errors: object[] = [];
 
-  // AI-based error detection - with strict instructions to avoid false positives
-  const messages = [
-    {
-      role: "system",
-      content: `You are a radiology quality control AI. Check this report for REAL errors only.
+  const systemPrompt = `You are a radiology quality control AI. Check this report for REAL errors only.
 
 CRITICAL: Only flag GENUINE, SERIOUS issues. Do NOT flag:
 - Normal statements (e.g., "The left kidney is unremarkable" is perfectly fine)
@@ -473,13 +446,12 @@ CRITICAL: Only flag GENUINE, SERIOUS issues. Do NOT flag:
 - Style preferences or minor wording suggestions
 - Template-style normal descriptions
 - Statements about one side being normal while the other has a finding (this is EXPECTED)
-- Missing sections if the content is clearly present
 
 ONLY flag these ACTUAL ERRORS:
-1. A SPECIFIC finding described as present AND also described as absent (e.g., "3mm stone in right kidney" AND "no evidence of stone in both kidneys")
+1. A SPECIFIC finding described as present AND also described as absent
 2. A CRITICAL finding (cancer, fracture, hemorrhage) NOT mentioned in the impression
 3. A measurement that is clinically impossible
-4. A genuine left/right swap error
+4. A genuine left/right laterality swap error
 5. A spelling error that changes medical meaning
 
 Return JSON array:
@@ -489,20 +461,23 @@ Return JSON array:
   "message": "specific description of the REAL issue",
   "auto_detected": true
 }]
-Return empty array [] if no REAL issues found. Return only JSON.`,
-    },
-    {
-      role: "user",
-      content: `Report:\n${reportText}\n\nExtracted data:\n${JSON.stringify(structuredData, null, 2)}`,
-    },
-  ];
+Return empty array [] if no REAL issues found. Return only JSON.`;
+
+  const userPrompt = `Report:\n${reportText}\n\nExtracted data:\n${JSON.stringify(
+    structuredData,
+    null,
+    2
+  )}`;
 
   try {
-    const raw = await callGemini(messages, true);
+    const raw = await callGemini(systemPrompt, userPrompt, true);
     const parsed = JSON.parse(raw);
-    const aiErrors = Array.isArray(parsed) ? parsed : (parsed.errors ?? []);
-    const significantErrors = aiErrors.filter((e: Record<string, unknown>) =>
-      e.severity === "error" && e.type !== "missing_correlation" && e.type !== "incomplete"
+    const aiErrors = Array.isArray(parsed) ? parsed : parsed.errors ?? [];
+    const significantErrors = aiErrors.filter(
+      (e: Record<string, unknown>) =>
+        e.severity === "error" &&
+        e.type !== "missing_correlation" &&
+        e.type !== "incomplete"
     );
     errors.push(...significantErrors);
   } catch {
@@ -512,36 +487,39 @@ Return empty array [] if no REAL issues found. Return only JSON.`,
   return errors;
 }
 
-async function followUpQuestions(reportText: string, structuredData: object): Promise<string[]> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are an expert radiologist AI assistant. Based on the current report draft, generate 2-3 relevant follow-up questions.
+// ─── followUpQuestions ────────────────────────────────────────────────────────
+async function followUpQuestions(
+  reportText: string,
+  structuredData: object
+): Promise<string[]> {
+  const systemPrompt = `You are an expert radiologist AI assistant. Based on the current report draft, generate 2-3 relevant follow-up questions.
 Only ask about genuinely missing information that would affect clinical decision-making.
-Return JSON array of question strings. Return only a JSON array.`,
-    },
-    {
-      role: "user",
-      content: `Current report:\n${reportText}\n\nStructured data:\n${JSON.stringify(structuredData, null, 2)}`,
-    },
-  ];
+Return JSON array of question strings. Return only a JSON array.`;
 
-  const raw = await callGemini(messages, FAST_MODEL, true);
+  const userPrompt = `Current report:\n${reportText}\n\nStructured data:\n${JSON.stringify(
+    structuredData,
+    null,
+    2
+  )}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true);
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : (parsed.questions ?? []);
+    return Array.isArray(parsed) ? parsed : parsed.questions ?? [];
   } catch {
     return [];
   }
 }
 
-async function generateDiseaseFormat(diseaseName: string, modality: string, bodyPart: string): Promise<object> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a highly experienced senior radiologist with 25+ years of clinical experience. Generate a professional reference template for a specific condition.
+// ─── generateDiseaseFormat ────────────────────────────────────────────────────
+async function generateDiseaseFormat(
+  diseaseName: string,
+  modality: string,
+  bodyPart: string
+): Promise<object> {
+  const systemPrompt = `You are a highly experienced senior radiologist with 35+ years of clinical experience. Generate a professional reference template for a specific condition.
 
-Write like an experienced radiologist would - concise, clinically dense, naturally flowing.
+Write like an experienced radiologist — concise, clinically dense, naturally flowing.
 Do NOT include contradictory statements.
 Cover all relevant anatomy for the modality.
 
@@ -551,22 +529,21 @@ Return JSON with:
   "modality": "suggested imaging modality",
   "report": {
     "technique": "brief professional technique section",
-    "findings": "findings section with typical appearance - concise, professional, no filler",
-    "impression": "numbered impression points - short and clinically strong"
+    "clinical_information": "typical indication for this condition",
+    "findings": "findings section with typical appearance — concise, professional, no filler, **bold** on key pathology",
+    "impression": "numbered impression points — short and clinically strong"
   },
   "key_measurements": ["list of measurements to document"],
   "critical_findings_to_check": ["critical findings to look for"],
   "common_negative_contradictions": ["negatives to remove if this disease is present"],
   "related_conditions": ["differential diagnoses"]
-}`,
-    },
-    {
-      role: "user",
-      content: `Disease/Condition: ${diseaseName}\nModality: ${modality || "most appropriate"}\nBody Part: ${bodyPart || "relevant area"}\n\nGenerate a professional reference report template for this condition.`,
-    },
-  ];
+}`;
 
-  const raw = await callGemini(messages, SMART_MODEL, true);
+  const userPrompt = `Disease/Condition: ${diseaseName}\nModality: ${
+    modality || "most appropriate"
+  }\nBody Part: ${bodyPart || "relevant area"}\n\nGenerate a professional reference report template for this condition.`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true, 8192);
   try {
     return JSON.parse(raw);
   } catch {
@@ -574,11 +551,9 @@ Return JSON with:
   }
 }
 
+// ─── fixSpellingAndNegatives ──────────────────────────────────────────────────
 async function fixSpellingAndNegatives(reportText: string): Promise<object> {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a radiology report quality correction AI. Fix ONLY clear errors:
+  const systemPrompt = `You are a radiology report quality correction AI. Fix ONLY clear errors:
 1. Spelling errors in medical terminology
 2. Contradictory negative statements where a finding IS present
 3. Grammar issues that affect meaning
@@ -591,15 +566,11 @@ Return JSON with:
   "negatives_removed": [{"removed_text": "the negative statement removed", "reason": "why it contradicts a positive finding"}],
   "grammar_fixes": [{"original": "original text", "corrected": "corrected text"}],
   "total_changes": number
-}`,
-    },
-    {
-      role: "user",
-      content: `Please correct this radiology report:\n\n${reportText}`,
-    },
-  ];
+}`;
 
-  const raw = await callGemini(messages, SMART_MODEL, true);
+  const userPrompt = `Please correct this radiology report:\n\n${reportText}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true, 12288);
   try {
     return JSON.parse(raw);
   } catch {
@@ -607,6 +578,7 @@ Return JSON with:
   }
 }
 
+// ─── Deno HTTP server ─────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -616,7 +588,10 @@ Deno.serve(async (req: Request) => {
     if (!Deno.env.get("GEMINI_API_KEY")) {
       return new Response(
         JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
@@ -626,7 +601,9 @@ Deno.serve(async (req: Request) => {
     switch (operation) {
       case "extract":
         result = await extractStructuredData(
-          payload.input_text, payload.scan_type ?? "", payload.learning_context ?? ""
+          payload.input_text,
+          payload.scan_type ?? "",
+          payload.learning_context ?? ""
         );
         break;
 
@@ -641,23 +618,40 @@ Deno.serve(async (req: Request) => {
         break;
 
       case "suggest":
-        result = await suggestImprovements(payload.report_text, payload.structured_data ?? {});
+        result = await suggestImprovements(
+          payload.report_text,
+          payload.structured_data ?? {}
+        );
         break;
 
       case "differential":
-        result = await generateDifferential(payload.findings, payload.body_part ?? "", payload.modality ?? "");
+        result = await generateDifferential(
+          payload.findings,
+          payload.body_part ?? "",
+          payload.modality ?? ""
+        );
         break;
 
       case "detect_errors":
-        result = await detectErrors(payload.report_text, payload.structured_data ?? {});
+        result = await detectErrors(
+          payload.report_text,
+          payload.structured_data ?? {}
+        );
         break;
 
       case "follow_up":
-        result = await followUpQuestions(payload.report_text, payload.structured_data ?? {});
+        result = await followUpQuestions(
+          payload.report_text,
+          payload.structured_data ?? {}
+        );
         break;
 
       case "disease_format":
-        result = await generateDiseaseFormat(payload.disease_name ?? "", payload.modality ?? "", payload.body_part ?? "");
+        result = await generateDiseaseFormat(
+          payload.disease_name ?? "",
+          payload.modality ?? "",
+          payload.body_part ?? ""
+        );
         break;
 
       case "fix_spelling_negatives":
@@ -670,8 +664,18 @@ Deno.serve(async (req: Request) => {
         const template = payload.template ?? null;
         const learningContext = payload.learning_context ?? "";
 
-        const structured = await extractStructuredData(inputText, scanType, learningContext);
-        const report = await generateReport(structured, scanType, template, inputText, learningContext);
+        const structured = await extractStructuredData(
+          inputText,
+          scanType,
+          learningContext
+        );
+        const report = await generateReport(
+          structured,
+          scanType,
+          template,
+          inputText,
+          learningContext
+        );
         const reportObj = report as Record<string, unknown>;
         const fullText = (reportObj.full_report as string) ?? "";
 
@@ -680,7 +684,6 @@ Deno.serve(async (req: Request) => {
           followUpQuestions(fullText, structured),
         ]);
 
-        // No error detection on freshly generated reports
         result = { structured, report, suggestions, errors: [], questions };
         break;
       }
@@ -688,19 +691,21 @@ Deno.serve(async (req: Request) => {
       default:
         return new Response(
           JSON.stringify({ error: `Unknown operation: ${operation}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
         );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: result }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, data: result }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
