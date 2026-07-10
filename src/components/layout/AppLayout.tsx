@@ -11,6 +11,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, onHeaderAction }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { navigate } = useApp();
 
   useKeyboardShortcuts([
@@ -23,10 +24,15 @@ export function AppLayout({ children, onHeaderAction }: AppLayoutProps) {
   ]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onAction={onHeaderAction} />
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-navy-950">
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(!collapsed)}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <Header onAction={onHeaderAction} onMenuClick={() => setMobileNavOpen(true)} />
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

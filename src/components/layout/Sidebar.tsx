@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, FileText, FolderOpen, LayoutTemplate,
   Zap, Settings, ChevronLeft, ChevronRight, Activity,
-  LogOut, Moon, Sun,
+  LogOut, Moon, Sun, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
@@ -18,9 +18,11 @@ interface NavItem {
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { state, navigate, dispatch } = useApp();
 
   const navItems: NavItem[] = [
@@ -40,51 +42,67 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     dispatch({ type: 'SET_THEME', theme: state.theme === 'dark' ? 'light' : 'dark' });
   };
 
-  return (
-    <aside
-      className={`flex flex-col h-screen bg-gray-900 dark:bg-gray-950 text-white transition-all duration-300 ${
-        collapsed ? 'w-16' : 'w-60'
-      } shrink-0`}
-    >
+  const handleNavigate = (page: Page) => {
+    navigate(page);
+    onMobileClose?.();
+  };
+
+  const railContent = (isMobile: boolean) => (
+    <>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-800">
-        <div className="shrink-0 w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <Activity size={16} className="text-white" />
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.07]">
+        <div className="shrink-0 w-9 h-9 bg-gold-gradient rounded-xl flex items-center justify-center shadow-gold">
+          <Activity size={17} className="text-navy-950" strokeWidth={2.5} />
         </div>
-        {!collapsed && (
+        {(!collapsed || isMobile) && (
           <div className="overflow-hidden">
-            <p className="font-bold text-sm text-white leading-tight">RadAI</p>
-            <p className="text-[10px] text-gray-400 leading-tight">Copilot</p>
+            <p className="font-display font-bold text-sm text-white leading-tight tracking-tight">RadAI</p>
+            <p className="text-[10px] text-gold-300/80 leading-tight font-medium tracking-wide uppercase">Copilot</p>
           </div>
         )}
-        <button
-          onClick={onToggle}
-          className="ml-auto shrink-0 text-gray-400 hover:text-white transition-colors p-0.5 rounded"
-          aria-label="Toggle sidebar"
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        {isMobile ? (
+          <button
+            onClick={onMobileClose}
+            className="ml-auto shrink-0 text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 tap-target flex items-center justify-center"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={onToggle}
+            className="ml-auto shrink-0 text-slate-400 hover:text-gold-300 transition-colors p-1 rounded-lg hover:bg-white/5"
+            aria-label="Toggle sidebar"
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const active = state.currentPage === item.page;
           return (
             <button
               key={item.page}
-              onClick={() => navigate(item.page)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              onClick={() => handleNavigate(item.page)}
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 tap-target ${
                 active
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-white/[0.08] text-white shadow-inner-gold'
+                  : 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
               }`}
-              title={collapsed ? item.label : undefined}
+              title={collapsed && !isMobile ? item.label : undefined}
             >
-              <span className="shrink-0">{item.icon}</span>
-              {!collapsed && <span className="truncate">{item.label}</span>}
-              {!collapsed && item.badge && item.badge > 0 && (
-                <span className="ml-auto bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+              {active && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gold-gradient" />
+              )}
+              <span className={`shrink-0 transition-colors ${active ? 'text-gold-400' : 'group-hover:text-gold-300'}`}>
+                {item.icon}
+              </span>
+              {(!collapsed || isMobile) && <span className="truncate">{item.label}</span>}
+              {(!collapsed || isMobile) && item.badge && item.badge > 0 && (
+                <span className="ml-auto bg-gold-gradient text-navy-950 text-[11px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center shrink-0">
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}
@@ -94,31 +112,68 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Bottom */}
-      <div className="px-2 pb-4 border-t border-gray-800 pt-3 space-y-0.5">
-        {/* User info */}
-        {!collapsed && state.profile && (
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-medium text-white truncate">{state.profile.name || state.user?.email}</p>
-            <p className="text-[10px] text-gray-500 capitalize">{state.profile.role}</p>
+      <div className="px-2.5 pb-4 border-t border-white/[0.07] pt-3 space-y-1">
+        {(!collapsed || isMobile) && state.profile && (
+          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-white/[0.04]">
+            <div className="shrink-0 w-8 h-8 rounded-full bg-navy-gradient border border-gold-400/30 flex items-center justify-center text-gold-300 text-xs font-bold">
+              {(state.profile.name || state.user?.email || '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-xs font-semibold text-white truncate">{state.profile.name || state.user?.email}</p>
+              <p className="text-[10px] text-slate-400 capitalize">{state.profile.role}</p>
+            </div>
           </div>
         )}
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-all"
-          title={collapsed ? 'Toggle theme' : undefined}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-white/[0.05] hover:text-white transition-all tap-target"
+          title={collapsed && !isMobile ? 'Toggle theme' : undefined}
         >
           <span className="shrink-0">{state.theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</span>
-          {!collapsed && <span>{state.theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+          {(!collapsed || isMobile) && <span>{state.theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
         </button>
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-red-900/40 hover:text-red-400 transition-all"
-          title={collapsed ? 'Sign out' : undefined}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all tap-target"
+          title={collapsed && !isMobile ? 'Sign out' : undefined}
         >
           <span className="shrink-0"><LogOut size={18} /></span>
-          {!collapsed && <span>Sign out</span>}
+          {(!collapsed || isMobile) && <span>Sign out</span>}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop / tablet rail */}
+      <aside
+        className={`hidden md:flex flex-col h-screen bg-navy-gradient text-white transition-all duration-300 ${
+          collapsed ? 'w-[68px]' : 'w-64'
+        } shrink-0 border-r border-white/[0.06]`}
+      >
+        {railContent(false)}
+      </aside>
+
+      {/* Mobile drawer */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 transition-opacity duration-300 ${
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          className="absolute inset-0 bg-navy-950/70 backdrop-blur-sm"
+          onClick={onMobileClose}
+        />
+        <aside
+          className={`absolute left-0 top-0 h-full w-[82%] max-w-[300px] bg-navy-gradient text-white flex flex-col shadow-premium-lg transition-transform duration-300 safe-bottom ${
+            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {railContent(true)}
+        </aside>
+      </div>
+    </>
   );
 }

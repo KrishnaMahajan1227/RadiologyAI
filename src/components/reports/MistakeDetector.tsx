@@ -62,9 +62,9 @@ const severityStyle: Record<SeverityLevel, {
     score: 10,
   },
   minor: {
-    dot: 'bg-blue-400',
-    text: 'text-blue-500 dark:text-blue-400',
-    row: 'border-l-2 border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/10',
+    dot: 'bg-navy-400',
+    text: 'text-navy-500 dark:text-navy-400',
+    row: 'border-l-2 border-navy-200 dark:border-navy-800 bg-navy-50/30 dark:bg-navy-950/10',
     score: 5,
   },
 };
@@ -421,7 +421,7 @@ export function MistakeDetector({
         onClick={() => setExpanded(true)}
         className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-colors text-left
           ${allClear
-            ? 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/60'
+            ? 'border-slate-200/70 dark:border-white/[0.06] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60'
             : hasCritical
               ? 'border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
               : 'border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/60 dark:hover:bg-amber-950/20'
@@ -435,7 +435,7 @@ export function MistakeDetector({
               : <AlertTriangle size={13} className="text-amber-500 shrink-0" />
           }
           <span className={`text-[11px] font-semibold
-            ${allClear ? 'text-gray-600 dark:text-gray-400' : hasCritical ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+            ${allClear ? 'text-slate-600 dark:text-slate-400' : hasCritical ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
             {allClear
               ? 'Report checks passed'
               : `${significant.length} issue${significant.length !== 1 ? 's' : ''} detected — click to review`}
@@ -449,17 +449,17 @@ export function MistakeDetector({
             </span>
           )}
         </div>
-        <ChevronDown size={12} className="text-gray-400 shrink-0" />
+        <ChevronDown size={12} className="text-slate-400 shrink-0" />
       </button>
     );
   }
 
   // ── Expanded panel ────────────────────────────────────────────────────────
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+    <div className="card-premium rounded-xl overflow-hidden">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-800/40">
         <div className="flex items-center gap-2">
           {allClear
             ? <CheckCircle2 size={12} className="text-emerald-500" />
@@ -467,7 +467,7 @@ export function MistakeDetector({
               ? <ShieldAlert size={12} className="text-red-500" />
               : <AlertTriangle size={12} className="text-amber-500" />
           }
-          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[1.8px]">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[1.8px]">
             Report Checks
           </span>
           {!allClear && (
@@ -484,7 +484,7 @@ export function MistakeDetector({
           {onAutoClean && (
             <button
               onClick={handleAutoClean}
-              className="flex items-center gap-1 text-[10px] font-medium text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className="flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500 hover:text-navy-600 dark:hover:text-navy-400 transition-colors px-2 py-1 rounded hover:bg-navy-50 dark:hover:bg-navy-900/20"
               title="Remove filler phrases from findings"
             >
               <Wand2 size={10} />
@@ -493,7 +493,7 @@ export function MistakeDetector({
           )}
           <button
             onClick={() => setExpanded(false)}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors"
           >
             <ChevronUp size={13} />
           </button>
@@ -504,7 +504,7 @@ export function MistakeDetector({
       {allClear && (
         <div className="flex items-center gap-2 px-4 py-3">
           <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-          <p className="text-[12px] text-gray-500 dark:text-gray-400">
+          <p className="text-[12px] text-slate-500 dark:text-slate-400">
             No significant issues detected. Report is consistent.
           </p>
         </div>
@@ -512,7 +512,7 @@ export function MistakeDetector({
 
       {/* Issues list */}
       {!allClear && (
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
 
           {/* Critical + Major issues */}
           {significant.map(issue => {
@@ -528,7 +528,7 @@ export function MistakeDetector({
                     {issue.title}
                   </p>
                   {issue.recommendation && (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                       {issue.recommendation}
                     </p>
                   )}
@@ -556,18 +556,18 @@ function AdvisorySection({ advisory }: { advisory: QAIssue[] }) {
     <div>
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
       >
         <ChevronDown
           size={11}
-          className={`text-gray-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
+          className={`text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
         />
-        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
           {advisory.length} advisory note{advisory.length !== 1 ? 's' : ''}
         </span>
       </button>
       {open && (
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {advisory.map(issue => {
             const style = severityStyle[issue.severity];
             return (
@@ -581,7 +581,7 @@ function AdvisorySection({ advisory }: { advisory: QAIssue[] }) {
                     {issue.title}
                   </p>
                   {issue.recommendation && (
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
                       {issue.recommendation}
                     </p>
                   )}

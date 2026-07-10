@@ -6,7 +6,7 @@ import {
   Activity, ClipboardCheck, AlertTriangle,
   ChevronRight, CheckSquare, TrendingUp,
   Layers, Clock, RefreshCw, BookOpen, List,
-  Brain, Search, BarChart2,
+  Brain, Search, BarChart2, Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -361,7 +361,7 @@ function computeQuality(technique: string, findings: string, impression: string,
     badgeColor = 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800';
   } else if (score < 92) {
     badge = 'Good';
-    badgeColor = 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800';
+    badgeColor = 'text-navy-600 bg-navy-50 border-navy-200 dark:bg-navy-900/20 dark:border-navy-800';
   } else {
     badge = 'Excellent';
     badgeColor = 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800';
@@ -374,25 +374,25 @@ function computeQuality(technique: string, findings: string, impression: string,
 
 function WorkflowBar({ currentStep }: { currentStep: number }) {
   return (
-    <div className="flex items-center gap-0 shrink-0 overflow-x-auto px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+    <div className="flex items-center gap-0 shrink-0 overflow-x-auto px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.06]">
       {WORKFLOW_STEPS.map((step, idx) => (
         <div key={step.id} className="flex items-center">
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap
             ${currentStep === step.id
-              ? 'bg-blue-600 text-white'
+              ? 'bg-navy-600 text-white'
               : currentStep > step.id
                 ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-gray-400 dark:text-gray-600'}`}>
+                : 'text-slate-400 dark:text-slate-600'}`}>
             {currentStep > step.id
               ? <CheckCheck size={9} />
               : <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold border
-                  ${currentStep === step.id ? 'border-white/40 bg-white/20' : 'border-gray-300 dark:border-gray-700'}`}>
+                  ${currentStep === step.id ? 'border-white/40 bg-white/20' : 'border-slate-300 dark:border-slate-700'}`}>
                   {step.id}
                 </span>}
             {step.label}
           </div>
           {idx < WORKFLOW_STEPS.length - 1 && (
-            <ChevronRight size={10} className="text-gray-200 dark:text-gray-700 mx-0.5 shrink-0" />
+            <ChevronRight size={10} className="text-slate-200 dark:text-slate-700 mx-0.5 shrink-0" />
           )}
         </div>
       ))}
@@ -422,7 +422,7 @@ function ClinicalHintPill({ hint, urgent }: { hint: string; urgent?: boolean }) 
     <div className={`flex items-start gap-2 px-3 py-2 rounded-lg text-[11px] leading-snug
       ${urgent
         ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-        : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'}`}>
+        : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'}`}>
       <Activity size={10} className="shrink-0 mt-0.5 opacity-60" />
       <span className="flex-1">{hint}</span>
       <button onClick={() => setDismissed(true)} className="shrink-0 opacity-40 hover:opacity-70 transition-opacity">
@@ -446,14 +446,14 @@ function QualityBadge({ quality, onClick }: { quality: QualityResult; onClick: (
 function QualityChecklist({ quality, visible }: { quality: QualityResult; visible: boolean }) {
   if (!visible) return null;
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
-      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-        <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[1.8px]">Report Checklist</p>
+    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/[0.06]">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[1.8px]">Report Checklist</p>
       </div>
       <div className="px-4 py-3 grid grid-cols-2 gap-1.5">
         {quality.checks.map((check, idx) => (
           <div key={idx} className={`flex items-center gap-1.5 text-[11px]
-            ${check.passed ? 'text-gray-500 dark:text-gray-400' : check.critical ? 'text-red-600 dark:text-red-400 font-medium' : 'text-amber-600 dark:text-amber-400'}`}>
+            ${check.passed ? 'text-slate-500 dark:text-slate-400' : check.critical ? 'text-red-600 dark:text-red-400 font-medium' : 'text-amber-600 dark:text-amber-400'}`}>
             {check.passed
               ? <CheckCheck size={9} className="text-emerald-500 shrink-0" />
               : <AlertCircle size={9} className={`shrink-0 ${check.critical ? 'text-red-500' : 'text-amber-500'}`} />}
@@ -477,7 +477,7 @@ function ModalityChecklistPanel({
 }) {
   if (!visible) return null;
   return (
-    <div className="bg-white dark:bg-gray-900 border border-indigo-100 dark:border-indigo-900/40 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/40 rounded-xl overflow-hidden">
       <div className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center gap-2">
         <List size={10} className="text-indigo-500" />
         <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[1.8px]">Mandatory Documentation Items</p>
@@ -485,12 +485,12 @@ function ModalityChecklistPanel({
       {loading ? (
         <div className="flex items-center gap-2 px-4 py-3">
           <Loader2 size={11} className="animate-spin text-indigo-400" />
-          <span className="text-[11px] text-gray-400">Loading checklist…</span>
+          <span className="text-[11px] text-slate-400">Loading checklist…</span>
         </div>
       ) : (
         <div className="px-4 py-3 space-y-1.5 max-h-60 overflow-y-auto">
           {checklist.map((item, idx) => (
-            <div key={idx} className="flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+            <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300">
               <span className="text-indigo-400 shrink-0 mt-0.5">·</span>
               <span className="leading-snug">{item}</span>
             </div>
@@ -507,17 +507,17 @@ function StructuredDataPanel({ structured }: { structured: StructuredData }) {
   const flat = Object.entries(structured).filter(([, v]) => v && typeof v !== 'object');
   if (flat.length === 0) return null;
   return (
-    <details className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-      <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-        <TrendingUp size={11} className="text-gray-400" />
-        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Extracted Structured Data</span>
-        <span className="ml-auto text-[9px] text-gray-300 dark:text-gray-600">{flat.length} fields</span>
+    <details className="bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <TrendingUp size={11} className="text-slate-400" />
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Extracted Structured Data</span>
+        <span className="ml-auto text-[9px] text-slate-300 dark:text-slate-600">{flat.length} fields</span>
       </summary>
       <div className="px-4 pb-4 grid grid-cols-3 gap-2 mt-2">
         {flat.map(([k, v]) => (
-          <div key={k} className="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800">
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</p>
-            <p className="text-[11px] text-gray-700 dark:text-gray-300 font-medium">{String(v)}</p>
+          <div key={k} className="bg-white dark:bg-slate-900 rounded-lg p-2.5 border border-slate-100 dark:border-slate-800">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">{k.replace(/_/g, ' ')}</p>
+            <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">{String(v)}</p>
           </div>
         ))}
       </div>
@@ -538,7 +538,7 @@ function FollowUpQuestionsPanel({
   const [visible, setVisible] = useState(false);
   if (questions.length === 0 && !loading) return null;
   return (
-    <div className="bg-white dark:bg-gray-900 border border-amber-100 dark:border-amber-900/40 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/40 rounded-xl overflow-hidden">
       <button
         onClick={() => setVisible(!visible)}
         className="w-full flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors">
@@ -555,7 +555,7 @@ function FollowUpQuestionsPanel({
             <button
               key={idx}
               onClick={() => onQuestionClick(q)}
-              className="w-full text-left flex items-start gap-2 text-[11px] text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1.5 rounded-lg transition-colors">
+              className="w-full text-left flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300 hover:text-navy-600 dark:hover:text-navy-400 hover:bg-navy-50 dark:hover:bg-navy-900/20 px-2 py-1.5 rounded-lg transition-colors">
               <Search size={9} className="shrink-0 mt-0.5 opacity-50" />
               <span className="leading-snug">{q}</span>
             </button>
@@ -629,15 +629,15 @@ function FinalizationModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-800"
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200/70 dark:border-white/[0.06]"
         onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-3">
+          <div className="w-8 h-8 bg-navy-600 rounded-xl flex items-center justify-center shrink-0">
             <ClipboardCheck size={15} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Final Report Review</h2>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">Verify before finalizing</p>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Final Report Review</h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Verify before finalizing</p>
           </div>
           <span className={`text-[9px] font-bold px-2 py-1 rounded-full border shrink-0 ${quality.badgeColor}`}>
             {quality.badge}
@@ -672,21 +672,21 @@ function FinalizationModal({
             <div
               onClick={() => setApproved(!approved)}
               className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0
-                ${approved ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                ${approved ? 'bg-navy-600 border-navy-600' : 'border-slate-300 dark:border-slate-600'}`}>
               {approved && <CheckCheck size={9} className="text-white" />}
             </div>
-            <span className="text-[11px] text-gray-600 dark:text-gray-400 leading-snug">
+            <span className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
               I confirm this report has been reviewed, is medically accurate, and is approved for finalization.
             </span>
           </label>
         </div>
         <div className="px-6 pb-5 flex gap-2.5">
           <button onClick={onClose}
-            className="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-white/10 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             Back to Edit
           </button>
           <button onClick={onConfirm} disabled={!approved}
-            className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors">
+            className="flex-1 py-2 rounded-xl bg-navy-600 hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors">
             Finalize & Export PDF
           </button>
         </div>
@@ -729,26 +729,26 @@ function ReportSection({
 }) {
   const styles = {
     default: {
-      wrapper: 'border-gray-200 dark:border-gray-800',
-      header: 'bg-gray-50 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400',
-      text: 'text-gray-700 dark:text-gray-300',
+      wrapper: 'border-slate-200/70 dark:border-white/[0.06]',
+      header: 'bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-white/[0.06] text-slate-500 dark:text-slate-400',
+      text: 'text-slate-700 dark:text-slate-300',
     },
     findings: {
-      wrapper: 'border-gray-200 dark:border-gray-800',
-      header: 'bg-gray-50 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400',
-      text: 'text-gray-800 dark:text-gray-200',
+      wrapper: 'border-slate-200/70 dark:border-white/[0.06]',
+      header: 'bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-white/[0.06] text-slate-600 dark:text-slate-400',
+      text: 'text-slate-800 dark:text-slate-200',
     },
     impression: {
-      wrapper: 'border-blue-200 dark:border-blue-900 border-l-4 border-l-blue-500 dark:border-l-blue-600',
-      header: 'bg-blue-50 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900 text-blue-700 dark:text-blue-400',
-      text: 'text-gray-900 dark:text-gray-100 font-medium',
+      wrapper: 'border-navy-200 dark:border-navy-900 border-l-4 border-l-blue-500 dark:border-l-blue-600',
+      header: 'bg-navy-50 dark:bg-navy-950/40 border-b border-navy-100 dark:border-navy-900 text-navy-700 dark:text-navy-400',
+      text: 'text-slate-900 dark:text-slate-100 font-medium',
     },
   }[variant];
 
   const wordCount = value.trim() ? value.split(/\s+/).filter(Boolean).length : 0;
 
   return (
-    <section id={id} className={`bg-white dark:bg-gray-900 rounded-xl border ${styles.wrapper} overflow-hidden`}>
+    <section id={id} className={`bg-white dark:bg-slate-900 rounded-xl border ${styles.wrapper} overflow-hidden`}>
       <div className={`flex items-center justify-between px-4 py-2 ${styles.header} sticky top-0 z-10`}>
         <div className="flex items-center gap-2">
           <h3 className="text-[9px] font-bold uppercase tracking-[2px]">{label}</h3>
@@ -816,8 +816,8 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
           key={i}
           className={`text-[13px] leading-[1.8] whitespace-pre-wrap mb-1 ${
             isBullet
-              ? 'pl-4 text-gray-700 dark:text-gray-300'
-              : 'text-gray-700 dark:text-gray-300'
+              ? 'pl-4 text-slate-700 dark:text-slate-300'
+              : 'text-slate-700 dark:text-slate-300'
           }`}
         >
           {cleanLine}
@@ -827,16 +827,16 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-800"
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-slate-200/70 dark:border-white/[0.06]"
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/[0.06] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-navy-600 rounded-lg flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">{report.title || 'Untitled Report'}</h2>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{report.title || 'Untitled Report'}</h2>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                 {new Date(report.created_at).toLocaleString('en-IN', {
                   day: '2-digit', month: 'short', year: 'numeric',
                   hour: '2-digit', minute: '2-digit', hour12: true,
@@ -848,18 +848,18 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleDownload}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
+              className="flex items-center gap-1.5 bg-navy-600 hover:bg-navy-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
               <Download size={12} /> Download PDF
             </button>
             <button onClick={onClose}
-              className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <X size={16} />
             </button>
           </div>
         </div>
         {linkedCase && (
-          <div className="px-6 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 shrink-0">
-            <div className="grid grid-cols-4 gap-4 text-[11px]">
+          <div className="px-6 py-2.5 bg-slate-50 dark:bg-white/[0.04] border-b border-slate-100 dark:border-white/[0.06] shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[11px]">
               {[
                 { label: 'Patient', value: linkedCase.patient_name },
                 { label: 'Age / Sex', value: `${linkedCase.patient_age || '-'} / ${linkedCase.patient_gender || '-'}` },
@@ -867,8 +867,8 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
                 { label: 'Ref. Doctor', value: linkedCase.referring_doctor || '-' },
               ].map(item => (
                 <div key={item.label}>
-                  <span className="text-gray-400 dark:text-gray-500 block text-[10px] uppercase tracking-wide">{item.label}</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{item.value}</span>
+                  <span className="text-slate-400 dark:text-slate-500 block text-[10px] uppercase tracking-wide">{item.label}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -877,28 +877,28 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
           {report.technique && (
             <section>
-              <h3 className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">Technique</h3>
-              <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-[1.8] whitespace-pre-wrap">{report.technique}</p>
+              <h3 className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[2.5px] border-b border-slate-100 dark:border-white/[0.06] pb-1.5 mb-3">Technique</h3>
+              <p className="text-[13px] text-slate-600 dark:text-slate-300 leading-[1.8] whitespace-pre-wrap">{report.technique}</p>
             </section>
           )}
           {report.findings && (
             <section>
-              <h3 className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[2.5px] border-b border-gray-100 dark:border-gray-800 pb-1.5 mb-3">Findings</h3>
+              <h3 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[2.5px] border-b border-slate-100 dark:border-white/[0.06] pb-1.5 mb-3">Findings</h3>
               {renderText(report.findings)}
             </section>
           )}
           {report.impression && (
-            <section className="border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 bg-blue-50/40 dark:bg-blue-950/20">
-              <h3 className="text-[9px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-[2.5px] border-b border-blue-200 dark:border-blue-800 pb-1.5 mb-3">Impression</h3>
+            <section className="border border-navy-100 dark:border-navy-900/40 rounded-xl p-5 bg-navy-50/40 dark:bg-navy-950/20">
+              <h3 className="text-[9px] font-bold text-navy-700 dark:text-navy-400 uppercase tracking-[2.5px] border-b border-navy-200 dark:border-navy-800 pb-1.5 mb-3">Impression</h3>
               {renderText(report.impression)}
             </section>
           )}
           {report.input_text && (
-            <details className="bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <summary className="px-4 py-2.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <details className="bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              <summary className="px-4 py-2.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 Original Dictation
               </summary>
-              <p className="px-4 pb-4 pt-2 text-[12px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap font-mono leading-relaxed">
+              <p className="px-4 pb-4 pt-2 text-[12px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed">
                 {report.input_text}
               </p>
             </details>
@@ -960,6 +960,7 @@ export function ReportWorkspace() {
   const [saved, setSaved] = useState(false);
   const [viewingReport, setViewingReport] = useState<Report | null>(null);
   const [showSavedReports, setShowSavedReports] = useState(false);
+  const [copilotOpenMobile, setCopilotOpenMobile] = useState(false);
   const [showQuality, setShowQuality] = useState(false);
   const [showFinalize, setShowFinalize] = useState(false);
   const [spellingResult, setSpellingResult] = useState<{
@@ -1448,7 +1449,7 @@ export function ReportWorkspace() {
 
   // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-full bg-slate-50 dark:bg-slate-950">
       {viewingReport && <ReportViewerModal report={viewingReport} onClose={() => setViewingReport(null)} />}
 
       {showFinalize && quality && (
@@ -1463,56 +1464,56 @@ export function ReportWorkspace() {
       {showSavedReports && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setShowSavedReports(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-800"
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-slate-200/70 dark:border-white/[0.06]"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.06] shrink-0">
               <div className="flex items-center gap-2.5">
-                <FileText size={14} className="text-blue-600" />
-                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Saved Reports</h2>
-                <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full font-semibold">
+                <FileText size={14} className="text-navy-600" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Saved Reports</h2>
+                <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-semibold">
                   {state.reports.length}
                 </span>
               </div>
               <button onClick={() => setShowSavedReports(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <X size={16} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-50 dark:divide-white/[0.05]">
               {state.reports.length === 0 ? (
                 <div className="py-16 text-center">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <FileText size={20} className="text-gray-300 dark:text-gray-600" />
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <FileText size={20} className="text-slate-300 dark:text-slate-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-400 dark:text-gray-500">No saved reports yet</p>
-                  <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Generate and save your first report</p>
+                  <p className="text-sm font-medium text-slate-400 dark:text-slate-500">No saved reports yet</p>
+                  <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">Generate and save your first report</p>
                 </div>
               ) : (
                 state.reports.map((r) => {
                   const rCase = state.cases.find((c) => c.id === r.case_id);
                   return (
-                    <div key={r.id} className="px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
+                    <div key={r.id} className="px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors group">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{r.title || 'Untitled'}</p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <p className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">{r.title || 'Untitled'}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {rCase?.patient_name && (
-                              <span className="font-medium text-gray-700 dark:text-gray-300">{rCase.patient_name} · </span>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">{rCase.patient_name} · </span>
                             )}
                             {new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             {' '} · {r.word_count || 0} words
                           </p>
                           {r.impression && (
-                            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-1 italic">{r.impression}</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 line-clamp-1 italic">{r.impression}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setViewingReport(r)}
-                            className="flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2.5 py-1.5 rounded-lg transition-colors">
+                            className="flex items-center gap-1 text-[11px] font-medium text-navy-600 dark:text-navy-400 hover:bg-navy-50 dark:hover:bg-navy-900/20 px-2.5 py-1.5 rounded-lg transition-colors">
                             <Eye size={11} /> View
                           </button>
                           <button onClick={() => handleLoadReport(r)}
-                            className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 px-2.5 py-1.5 rounded-lg transition-colors">
+                            className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg transition-colors">
                             <Wand2 size={11} /> Edit
                           </button>
                         </div>
@@ -1545,16 +1546,16 @@ export function ReportWorkspace() {
         )}
 
         {/* ── Top Toolbar ─────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-200/70 dark:border-white/[0.06] bg-white dark:bg-slate-900 shrink-0 flex-wrap">
           {/* Scan type */}
           <div className="relative">
             <select
               value={scanType}
               onChange={(e) => setScanType(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-1.5 text-xs font-semibold bg-gray-100 dark:bg-gray-800 border border-transparent hover:border-gray-300 dark:hover:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700 dark:text-gray-300 cursor-pointer transition-colors">
+              className="appearance-none pl-3 pr-7 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 rounded-lg focus:outline-none focus:border-navy-500 text-slate-700 dark:text-slate-300 cursor-pointer transition-colors">
               {SCAN_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
-            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
           {/* Template */}
@@ -1562,13 +1563,13 @@ export function ReportWorkspace() {
             <select
               value={selectedTemplateId}
               onChange={(e) => handleTemplateSelect(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 border border-transparent hover:border-gray-300 dark:hover:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700 dark:text-gray-300 cursor-pointer max-w-44 transition-colors">
+              className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 rounded-lg focus:outline-none focus:border-navy-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-44 transition-colors">
               <option value="">Template…</option>
               {state.templates.filter((t) => t.scan_type === scanType || t.scan_type === 'General').map((t) => (
                 <option key={t.id} value={t.id}>{t.name}{t.is_default ? ' ★' : ''}</option>
               ))}
             </select>
-            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
           {/* Case link */}
@@ -1576,13 +1577,13 @@ export function ReportWorkspace() {
             <select
               value={selectedCaseId}
               onChange={(e) => setSelectedCaseId(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 border border-transparent hover:border-gray-300 dark:hover:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-gray-700 dark:text-gray-300 cursor-pointer max-w-44 transition-colors">
+              className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 rounded-lg focus:outline-none focus:border-navy-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-44 transition-colors">
               <option value="">Link Case…</option>
               {state.cases.map((c) => (
                 <option key={c.id} value={c.id}>{c.patient_name} – {c.scan_type}</option>
               ))}
             </select>
-            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
           {/* Modality checklist toggle */}
@@ -1591,7 +1592,7 @@ export function ReportWorkspace() {
             className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-colors
               ${showModalityChecklist
                 ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             title="Toggle mandatory documentation checklist">
             {loadingChecklist ? <Loader2 size={10} className="animate-spin" /> : <BookOpen size={10} />}
             Checklist
@@ -1622,13 +1623,13 @@ export function ReportWorkspace() {
           {/* Saved reports */}
           <button
             onClick={() => setShowSavedReports(true)}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <FileText size={12} /> Reports ({state.reports.length})
           </button>
 
           {hasReport && (
             <>
-              <div className="w-px h-4 bg-gray-200 dark:bg-gray-700" />
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
 
               {/* Regen from structured (if structured data available) */}
               {structured && Object.keys(structured).length > 0 && (
@@ -1636,7 +1637,7 @@ export function ReportWorkspace() {
                   onClick={handleRegenFromStructured}
                   disabled={generating}
                   title="Regenerate report from extracted structured data"
-                  className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-violet-700 dark:hover:text-violet-400 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-400 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-50">
                   {generating ? <Loader2 size={10} className="animate-spin" /> : <BarChart2 size={10} />}
                   Regen
                 </button>
@@ -1646,7 +1647,7 @@ export function ReportWorkspace() {
               <button
                 onClick={handleFixSpelling}
                 disabled={fixingSpelling}
-                className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-amber-700 dark:hover:text-amber-400 px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50">
+                className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:opacity-50">
                 {fixingSpelling ? <Loader2 size={10} className="animate-spin" /> : <SpellCheck size={10} />}
                 Fix & Clean
               </button>
@@ -1654,7 +1655,7 @@ export function ReportWorkspace() {
               {/* Copy */}
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 {copied ? <CheckCheck size={10} className="text-emerald-500" /> : <Copy size={10} />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
@@ -1671,14 +1672,14 @@ export function ReportWorkspace() {
               {/* Finalize */}
               <button
                 onClick={() => setShowFinalize(true)}
-                className="flex items-center gap-1 text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors">
+                className="flex items-center gap-1 text-[11px] font-semibold bg-navy-600 hover:bg-navy-700 text-white px-3 py-1.5 rounded-lg transition-colors">
                 <Download size={10} /> Finalize
               </button>
 
               {/* Clear */}
               <button
                 onClick={handleClearReport}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                 title="Clear report">
                 <X size={13} />
               </button>
@@ -1691,12 +1692,12 @@ export function ReportWorkspace() {
 
         {/* ── Patient Context Strip ────────────────────────────────────────── */}
         {linkedCase && (
-          <div className="flex items-center gap-4 px-4 py-2 bg-blue-50/50 dark:bg-blue-950/20 border-b border-blue-100 dark:border-blue-900/30 shrink-0 overflow-x-auto">
+          <div className="flex items-center gap-4 px-4 py-2 bg-navy-50/50 dark:bg-navy-950/20 border-b border-navy-100 dark:border-navy-900/30 shrink-0 overflow-x-auto">
             <div className="flex items-center gap-1.5 shrink-0">
-              <div className="w-5 h-5 bg-blue-600 rounded-md flex items-center justify-center">
+              <div className="w-5 h-5 bg-navy-600 rounded-md flex items-center justify-center">
                 <Stethoscope size={10} className="text-white" />
               </div>
-              <span className="text-xs font-bold text-blue-900 dark:text-blue-200 whitespace-nowrap">
+              <span className="text-xs font-bold text-navy-900 dark:text-navy-200 whitespace-nowrap">
                 {linkedCase.patient_name}
               </span>
             </div>
@@ -1707,14 +1708,14 @@ export function ReportWorkspace() {
               { label: 'Scan', value: linkedCase.scan_type || '—' },
             ].map(item => (
               <div key={item.label} className="flex items-center gap-1 text-[11px] whitespace-nowrap shrink-0">
-                <span className="text-blue-400 dark:text-blue-500">{item.label}:</span>
-                <span className="font-semibold text-blue-800 dark:text-blue-300">{item.value}</span>
+                <span className="text-navy-400 dark:text-navy-500">{item.label}:</span>
+                <span className="font-semibold text-navy-800 dark:text-navy-300">{item.value}</span>
               </div>
             ))}
             {linkedCase.notes && (
               <div className="flex items-center gap-1 text-[11px] min-w-0">
-                <span className="text-blue-400 dark:text-blue-500 shrink-0">Hx:</span>
-                <span className="text-blue-700 dark:text-blue-400 truncate italic">{linkedCase.notes}</span>
+                <span className="text-navy-400 dark:text-navy-500 shrink-0">Hx:</span>
+                <span className="text-navy-700 dark:text-navy-400 truncate italic">{linkedCase.notes}</span>
               </div>
             )}
           </div>
@@ -1738,7 +1739,7 @@ export function ReportWorkspace() {
         )}
 
         {/* ── Dictation Panel ──────────────────────────────────────────────── */}
-        <div className="shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 pt-3 pb-3">
+        <div className="shrink-0 border-b border-slate-200/70 dark:border-white/[0.06] bg-white dark:bg-slate-900 px-4 pt-3 pb-3">
           <div className="flex items-start gap-3">
             {/* Textarea */}
             <div className="flex-1 relative">
@@ -1750,7 +1751,7 @@ export function ReportWorkspace() {
                   ? `Dictate ${scanType} findings for "${selectedTemplate?.name}" template… (type / for macros)`
                   : `Dictate or type ${scanType} findings… (type / for macros)`}
                 rows={3}
-                className="w-full resize-none bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-[13px] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all font-mono leading-relaxed"
+                className="w-full resize-none bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-[13px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/20 transition-all font-mono leading-relaxed"
               />
               {isListening && (
                 <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2 py-1 rounded-lg">
@@ -1764,15 +1765,15 @@ export function ReportWorkspace() {
               {/* Macro dropdown */}
               {showMacroDropdown && filteredMacros.length > 0 && (
                 <div ref={macroRef}
-                  className="absolute left-0 bottom-full mb-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-20 max-h-56 overflow-y-auto">
-                  <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-700">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Macros — type / to search</p>
+                  className="absolute left-0 bottom-full mb-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden z-20 max-h-56 overflow-y-auto">
+                  <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Macros — type / to search</p>
                   </div>
                   {filteredMacros.map((m) => (
                     <button key={m.id} onMouseDown={(e) => { e.preventDefault(); applyMacro(m); }}
-                      className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left">
-                      <span className="text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400 shrink-0">{m.trigger}</span>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{m.expansion.slice(0, 80)}…</p>
+                      className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-navy-50 dark:hover:bg-navy-900/20 transition-colors text-left">
+                      <span className="text-[11px] font-mono font-bold text-navy-600 dark:text-navy-400 shrink-0">{m.trigger}</span>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{m.expansion.slice(0, 80)}…</p>
                     </button>
                   ))}
                 </div>
@@ -1787,13 +1788,13 @@ export function ReportWorkspace() {
                   title={isListening ? 'Stop recording' : 'Start voice dictation'}
                   className={`p-2.5 rounded-xl transition-all ${isListening
                     ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                   {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                 </button>
               )}
               {isListening && (
                 <button onClick={resetVoice} title="Reset voice"
-                  className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   <X size={16} />
                 </button>
               )}
@@ -1801,8 +1802,8 @@ export function ReportWorkspace() {
                 onClick={() => setActiveMacros(!activeMacros)}
                 title="Macros (type /)"
                 className={`p-2.5 rounded-xl transition-colors ${activeMacros
-                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                  ? 'bg-navy-100 dark:bg-navy-900/40 text-navy-600 dark:text-navy-400'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                 <Zap size={16} />
               </button>
             </div>
@@ -1814,7 +1815,7 @@ export function ReportWorkspace() {
             <button
               onClick={handleGenerate}
               disabled={generating || !inputText.trim()}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-bold px-5 py-1.5 rounded-lg transition-colors">
+              className="flex items-center gap-1.5 bg-navy-600 hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-bold px-5 py-1.5 rounded-lg transition-colors">
               {generating
                 ? <><Loader2 size={12} className="animate-spin" /> Generating…</>
                 : <><Wand2 size={12} /> {selectedTemplateId ? 'Fill Template & Generate' : 'Generate Report'}</>}
@@ -1825,7 +1826,7 @@ export function ReportWorkspace() {
               onClick={handleExtractOnly}
               disabled={extractingOnly || !inputText.trim()}
               title="Extract structured data without generating a full report"
-              className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-violet-700 dark:hover:text-violet-400 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               {extractingOnly ? <Loader2 size={10} className="animate-spin" /> : <TrendingUp size={10} />}
               Extract Only
             </button>
@@ -1840,12 +1841,12 @@ export function ReportWorkspace() {
                 Quick by Disease
               </button>
               {showDiseasePicker && (
-                <div className="absolute left-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-30 overflow-hidden">
-                  <div className="p-3 border-b border-gray-100 dark:border-gray-700">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-2">Select disease / condition</p>
+                <div className="absolute left-0 top-full mt-1 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-30 overflow-hidden">
+                  <div className="p-3 border-b border-slate-100 dark:border-slate-700">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-2">Select disease / condition</p>
                     <input type="text" value={diseaseSearch} onChange={(e) => setDiseaseSearch(e.target.value)}
                       placeholder="e.g. Kidney Stone, Lung Cancer…"
-                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-navy-500"
                       autoFocus />
                   </div>
                   <div className="max-h-52 overflow-y-auto py-1">
@@ -1853,7 +1854,7 @@ export function ReportWorkspace() {
                       <button key={d} onClick={() => handleDiseaseFormat(d)}
                         className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-left">
                         <Stethoscope size={10} className="text-emerald-500 shrink-0" />
-                        <span className="text-xs text-gray-700 dark:text-gray-300">{d}</span>
+                        <span className="text-xs text-slate-700 dark:text-slate-300">{d}</span>
                       </button>
                     ))}
                     {diseaseSearch.trim() && !filteredDiseases.length && (
@@ -1869,7 +1870,7 @@ export function ReportWorkspace() {
             </div>
 
             {/* Word count hint */}
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 ml-1">
               {inputText.length > 0
                 ? `${inputText.split(/\s+/).filter(Boolean).length} words dictated`
                 : selectedTemplateId
@@ -1885,11 +1886,11 @@ export function ReportWorkspace() {
           {/* ─── Empty state ─────────────────────────────────────────────── */}
           {!hasReport && !generating && !generatingDisease && (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4 border border-gray-200 dark:border-gray-700">
-                <Activity size={26} className="text-gray-400 dark:text-gray-500" />
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-200 dark:border-white/10">
+                <Activity size={26} className="text-slate-400 dark:text-slate-500" />
               </div>
-              <h3 className="text-base font-bold text-gray-700 dark:text-gray-200 mb-1.5">Radiology Reporting Workspace</h3>
-              <p className="text-sm text-gray-400 dark:text-gray-500 max-w-sm leading-relaxed mb-6">
+              <h3 className="text-base font-bold text-slate-700 dark:text-slate-200 mb-1.5">Radiology Reporting Workspace</h3>
+              <p className="text-sm text-slate-400 dark:text-slate-500 max-w-sm leading-relaxed mb-6">
                 {selectedTemplateId
                   ? `Template "${selectedTemplate?.name}" loaded. Dictate findings and click Generate.`
                   : 'Select a scan type, link a patient case, then dictate your findings.'}
@@ -1906,18 +1907,18 @@ export function ReportWorkspace() {
                     className={`text-[10px] font-medium px-2.5 py-1 rounded-full border transition-colors
                       ${step.done
                         ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'}`}>
+                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-400 dark:text-slate-500'}`}>
                     {step.done ? '✓ ' : `${idx + 1}. `}{step.label}
                   </span>
                 ))}
               </div>
               {selectedTemplateId && extraTemplateSections.length > 0 && (
                 <div className="mt-5 w-full max-w-md space-y-2 text-left">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center mb-2">Template Sections</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center mb-2">Template Sections</p>
                   {extraTemplateSections.map((sec) => (
-                    <div key={sec.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-2.5">
-                      <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{sec.label}</p>
-                      <p className="text-[11px] text-gray-400 dark:text-gray-500 italic">{sec.content || 'AI will fill this section…'}</p>
+                    <div key={sec.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-2.5">
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">{sec.label}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">{sec.content || 'AI will fill this section…'}</p>
                     </div>
                   ))}
                 </div>
@@ -1929,16 +1930,16 @@ export function ReportWorkspace() {
           {(generating || generatingDisease) && (
             <div className="flex flex-col items-center justify-center py-20 gap-5">
               <div className="relative w-12 h-12">
-                <div className="absolute inset-0 border-4 border-blue-100 dark:border-blue-900/40 border-t-blue-600 rounded-full animate-spin" />
+                <div className="absolute inset-0 border-4 border-navy-100 dark:border-navy-900/40 border-t-blue-600 rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Wand2 size={14} className="text-blue-600" />
+                  <Wand2 size={14} className="text-navy-600" />
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                <p className="text-sm font-bold text-slate-900 dark:text-white">
                   {generatingDisease ? 'Generating disease format…' : 'Generating report…'}
                 </p>
-                <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">
+                <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">
                   {generatingDisease
                     ? 'Creating structured template for the condition'
                     : selectedTemplateId
@@ -1959,7 +1960,7 @@ export function ReportWorkspace() {
                   value={reportTitle}
                   onChange={(e) => setReportTitle(e.target.value)}
                   placeholder="Report title…"
-                  className="flex-1 text-sm font-bold bg-transparent text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none border-b border-transparent focus:border-blue-400 dark:focus:border-blue-600 pb-0.5 transition-colors"
+                  className="flex-1 text-sm font-bold bg-transparent text-slate-900 dark:text-white placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none border-b border-transparent focus:border-navy-400 dark:focus:border-navy-600 pb-0.5 transition-colors"
                 />
                 {quality && (
                   <QualityBadge quality={quality} onClick={() => setShowQuality(!showQuality)} />
@@ -2040,12 +2041,12 @@ export function ReportWorkspace() {
 
               {/* Extra template sections */}
               {extraTemplateSections.map((sec) => (
-                <section key={sec.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
-                    <h3 className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[2px]">{sec.label}</h3>
+                <section key={sec.id} className="card-premium rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-white/[0.06]">
+                    <h3 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[2px]">{sec.label}</h3>
                     <button
                       onClick={() => setTemplateSections(prev => prev.filter(s => s.id !== sec.id))}
-                      className="text-gray-300 hover:text-red-400 transition-colors">
+                      className="text-slate-300 hover:text-red-400 transition-colors">
                       <X size={11} />
                     </button>
                   </div>
@@ -2054,7 +2055,7 @@ export function ReportWorkspace() {
                     onChange={(v) => setTemplateSections(prev => prev.map(s => s.id === sec.id ? { ...s, content: v } : s))}
                     placeholder={`Enter ${sec.label.toLowerCase()} details…`}
                     minRows={3}
-                    className="w-full px-4 py-3.5 text-[13px] text-gray-700 dark:text-gray-300 bg-transparent focus:outline-none leading-[1.8]"
+                    className="w-full px-4 py-3.5 text-[13px] text-slate-700 dark:text-slate-300 bg-transparent focus:outline-none leading-[1.8]"
                     style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
                   />
                 </section>
@@ -2069,17 +2070,17 @@ export function ReportWorkspace() {
                   <button
                     onClick={handleRefreshAnalysis}
                     disabled={refreshing}
-                    className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50">
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:text-navy-600 dark:hover:text-navy-400 px-2.5 py-1.5 rounded-lg hover:bg-navy-50 dark:hover:bg-navy-900/20 transition-colors disabled:opacity-50">
                     {refreshing ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
                     Re-analyse
                   </button>
                   <button
                     onClick={handleExportPDF}
-                    className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <Download size={10} /> Quick PDF
                   </button>
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 font-mono">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                   <Clock size={10} />
                   {totalWords} words
                 </div>
@@ -2089,8 +2090,62 @@ export function ReportWorkspace() {
         </div>
       </div>
 
-      {/* ── Copilot Panel ────────────────────────────────────────────────── */}
-      <div className="w-72 xl:w-80 shrink-0 overflow-hidden border-l border-gray-200 dark:border-gray-800">
+      {/* ── Copilot toggle (mobile / tablet only) ────────────────────────── */}
+      <button
+        onClick={() => setCopilotOpenMobile(true)}
+        className="lg:hidden fixed bottom-5 right-5 z-30 flex items-center gap-2 bg-gold-gradient text-navy-950 font-semibold text-sm px-4 py-3 rounded-full shadow-gold tap-target"
+        aria-label="Open AI Copilot"
+      >
+        <Sparkles size={16} />
+        Copilot
+        {(errors.length > 0) && (
+          <span className="ml-0.5 bg-navy-900 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {errors.length > 9 ? '9+' : errors.length}
+          </span>
+        )}
+      </button>
+
+      {/* ── Copilot Panel — inline rail on desktop, slide-over drawer on mobile/tablet ── */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
+          copilotOpenMobile ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={!copilotOpenMobile}
+      >
+        <div className="absolute inset-0 bg-navy-950/60 backdrop-blur-sm" onClick={() => setCopilotOpenMobile(false)} />
+        <div
+          className={`absolute right-0 top-0 h-full w-[88%] max-w-sm bg-white dark:bg-slate-950 shadow-premium-lg transition-transform duration-300 flex flex-col safe-bottom ${
+            copilotOpenMobile ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/70 dark:border-white/[0.06] shrink-0">
+            <span className="flex items-center gap-2 text-sm font-display font-bold text-slate-900 dark:text-white">
+              <Sparkles size={15} className="text-gold-500" /> AI Copilot
+            </span>
+            <button
+              onClick={() => setCopilotOpenMobile(false)}
+              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 tap-target"
+              aria-label="Close AI Copilot"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <CopilotPanel
+              suggestions={suggestions}
+              errors={errors}
+              differential={differential}
+              questions={questions}
+              loading={refreshing}
+              onRefresh={handleRefreshAnalysis}
+              onApplySuggestion={handleApplySuggestion}
+              onQuestionClick={handleQuestionClick}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden lg:block lg:w-72 xl:w-80 shrink-0 overflow-hidden border-l border-slate-200/70 dark:border-white/[0.06]">
         <CopilotPanel
           suggestions={suggestions}
           errors={errors}

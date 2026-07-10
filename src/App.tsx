@@ -18,10 +18,15 @@ function AppInner() {
 
   if (state.authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={32} className="animate-spin text-blue-600" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading RadAI Copilot...</p>
+      <div className="min-h-screen bg-navy-gradient flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gold-gradient flex items-center justify-center shadow-gold animate-fadeIn">
+            <Loader2 size={24} className="animate-spin text-navy-950" />
+          </div>
+          <div className="text-center">
+            <p className="text-white font-display font-semibold text-sm tracking-tight">RadAI Copilot</p>
+            <p className="text-xs text-slate-400 mt-1">Loading your clinical workspace…</p>
+          </div>
         </div>
       </div>
     );

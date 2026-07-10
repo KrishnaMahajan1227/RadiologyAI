@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,20 +12,36 @@
 
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-slate-50 text-slate-900;
   }
 
   .dark body {
-    @apply bg-gray-950 text-white;
+    @apply bg-navy-950 text-slate-100;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: rgba(200, 168, 75, 0.28);
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid #c8a84b;
+    outline-offset: 2px;
   }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -33,19 +49,63 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-slate-300 rounded-full;
   }
 
   .dark ::-webkit-scrollbar-thumb {
-    @apply bg-gray-700;
+    background-color: rgba(200, 168, 75, 0.35);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    @apply bg-slate-400;
   }
 
   .dark ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-600;
+    background-color: rgba(200, 168, 75, 0.55);
+  }
+}
+
+@layer components {
+  /* Premium surface used across dashboard, cases, templates, settings etc. */
+  .card-premium {
+    @apply relative bg-white dark:bg-navy-900 border border-slate-200/70 dark:border-white/[0.06] rounded-2xl shadow-premium dark:shadow-premium-dark transition-shadow duration-300;
+  }
+
+  .card-premium-hover {
+    @apply hover:shadow-premium-lg hover:-translate-y-0.5 transition-all duration-300;
+  }
+
+  /* Primary CTA — deep navy fill with gold hover glow, matches marketing site language */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm text-white bg-navy-700 hover:bg-navy-600 dark:bg-gold-gradient dark:text-navy-950 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-gold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 font-medium text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-gold-400/60 hover:text-navy-700 dark:hover:text-gold-300 rounded-xl px-4 py-2.5 transition-all duration-200 active:scale-[0.98];
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-gold-700 dark:text-gold-300 bg-gold-50 dark:bg-gold-500/10 border border-gold-200 dark:border-gold-500/25 rounded-full px-2.5 py-1;
+  }
+
+  .input-premium {
+    @apply w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 focus:bg-white dark:focus:bg-navy-900 transition-all;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 dark:bg-white/10 rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  .dark .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(200,168,75,0.12), transparent);
+    background-size: 200% 100%;
   }
 }
 
@@ -62,5 +122,18 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

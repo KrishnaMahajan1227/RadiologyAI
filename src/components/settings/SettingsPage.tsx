@@ -110,8 +110,8 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
-        checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+      className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-navy-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+        checked ? 'bg-navy-600' : 'bg-slate-200 dark:bg-slate-700'
       }`}
     >
       <div
@@ -128,12 +128,12 @@ function Toggle({
 /* -------------------------------------------------------------------------- */
 
 const inputCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-all';
+  'w-full input-premium';
 
 const selectCls =
-  'w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-all';
+  'w-full input-premium';
 
-const labelCls = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5';
+const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5';
 
 /* -------------------------------------------------------------------------- */
 /*  CARD WRAPPER                                                               */
@@ -151,17 +151,17 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <Icon size={16} className="text-gray-500 dark:text-gray-400" />
-        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{title}</h3>
+    <div className="card-premium">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200/70 dark:border-white/[0.06]">
+        <Icon size={16} className="text-slate-500 dark:text-slate-400" />
+        <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{title}</h3>
         {badge && (
-          <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full ml-auto">
+          <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full ml-auto">
             {badge}
           </span>
         )}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -184,9 +184,9 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+        <p className="text-sm font-medium text-slate-900 dark:text-white">{label}</p>
         {description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
         )}
       </div>
       <Toggle checked={checked} onChange={onChange} />
@@ -448,7 +448,7 @@ if (error) throw error;
   ];
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5 sm:space-y-6 animate-fadeIn">
 
       {/* ── PERSONAL INFORMATION ─────────────────────────────────────────── */}
       <SectionCard icon={User} title="Personal Information">
@@ -459,10 +459,10 @@ if (error) throw error;
               type="email"
               value={state.user?.email ?? ''}
               disabled
-              className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Full Name</label>
               <input
@@ -522,7 +522,7 @@ if (error) throw error;
       {/* ── DOCTOR CREDENTIALS ───────────────────────────────────────────── */}
       <SectionCard icon={GraduationCap} title="Doctor Credentials" badge="Shows on reports">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Credentials / Degrees</label>
               <input
@@ -576,8 +576,8 @@ if (error) throw error;
               className="rounded"
             />
             <div>
-              <p className="text-sm text-gray-900 dark:text-white">Include signature line on reports</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-slate-900 dark:text-white">Include signature line on reports</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Adds a blank signature line at the bottom of printed reports
               </p>
             </div>
@@ -587,7 +587,7 @@ if (error) throw error;
 
       {/* ── HOSPITAL DETAILS ─────────────────────────────────────────────── */}
       <SectionCard icon={Building2} title="Hospital / Clinic Details" badge="Report header">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className={labelCls}>Hospital / Clinic Name</label>
             <input
@@ -607,7 +607,7 @@ if (error) throw error;
               placeholder="https://your-hospital.com/logo.png"
               className={inputCls}
             />
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               Public image URL. Printed at the top-left of every report letterhead.
             </p>
           </div>
@@ -660,7 +660,7 @@ if (error) throw error;
               placeholder="CEA/2024/00123"
               className={inputCls}
             />
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               Diagnostic centre / establishment registration — shown in the report footer.
             </p>
           </div>
@@ -670,7 +670,7 @@ if (error) throw error;
       {/* ── ACCREDITATION BADGES ─────────────────────────────────────────── */}
       <SectionCard icon={Award} title="Accreditation & Quality Certifications" badge="Report header">
         <div className="space-y-5">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             These badges appear in the report header when enabled.
           </p>
 
@@ -697,13 +697,13 @@ if (error) throw error;
 
           {/* Live badge preview */}
           {(accreditationNabh || accreditationNabl || accreditationIso) && (
-            <div className="mt-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2">
+            <div className="mt-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-2">
                 Badge preview
               </p>
               <div className="flex flex-wrap gap-2">
                 {accreditationNabh && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-700">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-navy-50 dark:bg-navy-900/30 text-navy-700 dark:text-navy-300 border border-navy-200 dark:border-navy-800 ring-1 ring-navy-300 dark:ring-navy-700">
                     <Award size={10} />
                     NABH Accredited
                   </span>
@@ -729,7 +729,7 @@ if (error) throw error;
       {/* ── REPORT CONFIGURATION ─────────────────────────────────────────── */}
       <SectionCard icon={Settings} title="Report Configuration">
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className={labelCls}>Default Scan Type</label>
               <select
@@ -757,7 +757,7 @@ if (error) throw error;
                 <option value="tamil_bilingual">Tamil (Bilingual)</option>
               </select>
               {reportLanguage !== 'english' && (
-                <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">
+                <p className="text-[11px] text-navy-600 dark:text-navy-400 mt-1">
                   English report with patient summary in regional language
                 </p>
               )}
@@ -794,20 +794,20 @@ if (error) throw error;
       </SectionCard>
 
       {/* ── LEGAL & COMPLIANCE ───────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <Scale size={16} className="text-gray-500 dark:text-gray-400" />
+      <div className="card-premium">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200/70 dark:border-white/[0.06]">
+          <Scale size={16} className="text-slate-500 dark:text-slate-400" />
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
               Medico-Legal &amp; Compliance
             </h3>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
               Required for legally valid reports in India
             </p>
           </div>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Registration number — already exists, now with validation */}
             <div>
               <label className={labelCls}>Registration Number</label>
@@ -869,7 +869,7 @@ if (error) throw error;
             <div>
               <label className={labelCls}>
                 AERB Radiation License Number{' '}
-                <span className="font-normal text-gray-400">(optional)</span>
+                <span className="font-normal text-slate-400">(optional)</span>
               </label>
               <input
                 type="text"
@@ -878,7 +878,7 @@ if (error) throw error;
                 placeholder="AERB/LIC/XXXXX"
                 className={inputCls}
               />
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-1">
                 Required for centres performing X-ray, CT, or nuclear medicine
               </p>
             </div>
@@ -888,7 +888,7 @@ if (error) throw error;
           <div>
             <label className={labelCls}>
               Custom Disclaimer Text{' '}
-              <span className="font-normal text-gray-400">(optional)</span>
+              <span className="font-normal text-slate-400">(optional)</span>
             </label>
             <textarea
               value={customDisclaimer}
@@ -897,7 +897,7 @@ if (error) throw error;
               rows={3}
               className={`${inputCls} resize-none`}
             />
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               Appears at the bottom of every report above the signature
             </p>
           </div>
@@ -906,9 +906,9 @@ if (error) throw error;
 
       {/* ── REPORT HEADER PREVIEW ────────────────────────────────────────── */}
       <SectionCard icon={FileText} title="Report Header Preview">
-        <div className="bg-white border border-gray-300 rounded-lg p-6 font-serif text-gray-900 text-[13px] shadow-inner">
+        <div className="bg-white border border-slate-300 rounded-lg p-6 font-serif text-slate-900 text-[13px] shadow-inner">
           {/* Logo + hospital name */}
-          <div className="flex items-center justify-center gap-3 border-b border-gray-300 pb-2 mb-1">
+          <div className="flex items-center justify-center gap-3 border-b border-slate-300 pb-2 mb-1">
             {hospitalLogoUrl && (
               <img
                 src={hospitalLogoUrl}
@@ -920,16 +920,16 @@ if (error) throw error;
             {hospitalName ? (
               <h4 className="text-center text-base font-bold">{hospitalName}</h4>
             ) : (
-              <h4 className="text-center text-base font-bold text-gray-300">[Hospital Name]</h4>
+              <h4 className="text-center text-base font-bold text-slate-300">[Hospital Name]</h4>
             )}
           </div>
 
           {/* Address / phone / email / website */}
           {hospitalAddress && (
-            <p className="text-center text-[11px] text-gray-600 mb-0.5">{hospitalAddress}</p>
+            <p className="text-center text-[11px] text-slate-600 mb-0.5">{hospitalAddress}</p>
           )}
           {(hospitalPhone || hospitalEmail || hospitalWebsite) && (
-            <p className="text-center text-[11px] text-gray-600 mb-1.5">
+            <p className="text-center text-[11px] text-slate-600 mb-1.5">
               {[
                 hospitalPhone ? `Tel: ${hospitalPhone}` : '',
                 hospitalEmail,
@@ -940,7 +940,7 @@ if (error) throw error;
 
           {/* Department */}
           {department && (
-            <p className="text-center text-[12px] font-semibold text-gray-700 border-t border-gray-200 pt-2 mb-2">
+            <p className="text-center text-[12px] font-semibold text-slate-700 border-t border-slate-200 pt-2 mb-2">
               {department}
             </p>
           )}
@@ -949,7 +949,7 @@ if (error) throw error;
           {(accreditationNabh || accreditationNabl || accreditationIso) && (
             <div className="flex justify-center flex-wrap gap-1.5 mb-3">
               {accreditationNabh && (
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-navy-50 text-navy-700 border border-navy-200">
                   ★ NABH Accredited
                 </span>
               )}
@@ -967,10 +967,10 @@ if (error) throw error;
           )}
 
           {/* Double rule */}
-          <div className="border-t-2 border-gray-900 my-2" />
+          <div className="border-t-2 border-slate-900 my-2" />
 
           {/* Patient info mock table */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-gray-600 mb-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600 mb-3">
             <div>
               Patient: <strong>John Doe</strong>
             </div>
@@ -988,36 +988,36 @@ if (error) throw error;
             </div>
             <div>
               Modality:{' '}
-              <strong className="text-blue-700">
+              <strong className="text-navy-700">
                 {defaultScanType || 'CT Chest'}
               </strong>
             </div>
           </div>
 
-          <div className="border-t border-gray-300 my-2" />
-          <p className="text-[12px] font-bold text-gray-800 mb-1 tracking-wide">
+          <div className="border-t border-slate-300 my-2" />
+          <p className="text-[12px] font-bold text-slate-800 mb-1 tracking-wide">
             RADIOLOGY REPORT
           </p>
-          <p className="text-[11px] text-gray-400 italic">… report content …</p>
+          <p className="text-[11px] text-slate-400 italic">… report content …</p>
 
           {/* Custom disclaimer */}
           {customDisclaimer && (
-            <div className="mt-4 border-t border-gray-200 pt-2">
-              <p className="text-[10px] text-gray-500 italic">{customDisclaimer}</p>
+            <div className="mt-4 border-t border-slate-200 pt-2">
+              <p className="text-[10px] text-slate-500 italic">{customDisclaimer}</p>
             </div>
           )}
 
           {/* Signature block */}
-          <div className="mt-6 border-t border-gray-200 pt-3">
-            <p className="text-[12px] font-semibold text-gray-800">
+          <div className="mt-6 border-t border-slate-200 pt-3">
+            <p className="text-[12px] font-semibold text-slate-800">
               {name || 'Dr. [Name]'}
               {doctorCredentials ? `, ${doctorCredentials}` : ''}
             </p>
             {designation && (
-              <p className="text-[11px] text-gray-600">{designation}</p>
+              <p className="text-[11px] text-slate-600">{designation}</p>
             )}
             {registrationNumber && (
-              <p className="text-[10px] text-gray-500">
+              <p className="text-[10px] text-slate-500">
                 Reg. No: {registrationNumber}
                 {registrationBody
                   ? ` (${
@@ -1033,10 +1033,10 @@ if (error) throw error;
               </p>
             )}
             {aerbLicense && (
-              <p className="text-[10px] text-gray-500">AERB: {aerbLicense}</p>
+              <p className="text-[10px] text-slate-500">AERB: {aerbLicense}</p>
             )}
             {signatureLine && (
-              <div className="mt-5 border-t border-gray-400 w-40" />
+              <div className="mt-5 border-t border-slate-400 w-40" />
             )}
           </div>
         </div>
@@ -1056,7 +1056,7 @@ if (error) throw error;
 
       {/* ── ACTIVITY ─────────────────────────────────────────────────────── */}
       <SectionCard icon={BarChart3} title="Your Activity">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[
             { label: 'Reports', value: state.reports.length },
             { label: 'Cases', value: state.cases.length },
@@ -1067,12 +1067,12 @@ if (error) throw error;
           ].map((stat) => (
             <div
               key={stat.label}
-              className="text-center bg-gray-50 dark:bg-gray-800/50 rounded-xl py-4 px-2"
+              className="text-center bg-slate-50 dark:bg-white/[0.04] rounded-xl py-4 px-2"
             >
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {stat.value}
               </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {stat.label}
               </p>
             </div>
@@ -1085,10 +1085,10 @@ if (error) throw error;
         <div className="space-y-1">
           {shortcuts.map((s) => (
             <div key={s.keys} className="flex items-center justify-between py-1.5">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 {s.description}
               </span>
-              <kbd className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2.5 py-1 rounded-lg font-mono border border-gray-200 dark:border-gray-700">
+              <kbd className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg font-mono border border-slate-200 dark:border-white/10">
                 {s.keys}
               </kbd>
             </div>
@@ -1104,7 +1104,7 @@ if (error) throw error;
           className={`flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all shadow-lg disabled:opacity-60 ${
             saved
               ? 'bg-emerald-600 hover:bg-emerald-700'
-              : 'bg-blue-600 hover:bg-blue-700'
+              : 'bg-navy-600 hover:bg-navy-700'
           }`}
         >
           {saving ? (
