@@ -50,7 +50,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
   const railContent = (isMobile: boolean) => (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.07]">
+      <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/[0.07] ${collapsed && !isMobile ? 'justify-center px-0' : ''}`}>
         <div className="shrink-0 w-9 h-9 bg-gold-gradient rounded-xl flex items-center justify-center shadow-gold">
           <Activity size={17} className="text-navy-950" strokeWidth={2.5} />
         </div>
@@ -60,21 +60,13 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
             <p className="text-[10px] text-gold-300/80 leading-tight font-medium tracking-wide uppercase">Copilot</p>
           </div>
         )}
-        {isMobile ? (
+        {isMobile && (
           <button
             onClick={onMobileClose}
             className="ml-auto shrink-0 text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 tap-target flex items-center justify-center"
             aria-label="Close menu"
           >
             <X size={18} />
-          </button>
-        ) : (
-          <button
-            onClick={onToggle}
-            className="ml-auto shrink-0 text-slate-400 hover:text-gold-300 transition-colors p-1 rounded-lg hover:bg-white/5"
-            aria-label="Toggle sidebar"
-          >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         )}
       </div>
@@ -148,11 +140,22 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
     <>
       {/* Desktop / tablet rail */}
       <aside
-        className={`hidden md:flex flex-col h-screen bg-navy-gradient text-white transition-all duration-300 ${
+        className={`hidden md:flex flex-col h-screen bg-navy-gradient text-white transition-all duration-300 relative ${
           collapsed ? 'w-[68px]' : 'w-64'
         } shrink-0 border-r border-white/[0.06]`}
       >
         {railContent(false)}
+
+        {/* Always-visible collapse/expand handle — sits on the rail's edge so it
+            never gets squeezed out, whether the rail is expanded or collapsed. */}
+        <button
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute top-6 -right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full bg-navy-800 border border-gold-400/40 text-gold-300 shadow-premium hover:bg-navy-700 hover:border-gold-400/70 hover:scale-110 active:scale-95 transition-all duration-200"
+        >
+          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
       </aside>
 
       {/* Mobile drawer */}
