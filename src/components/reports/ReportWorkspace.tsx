@@ -477,21 +477,21 @@ function ModalityChecklistPanel({
 }) {
   if (!visible) return null;
   return (
-    <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/40 rounded-xl overflow-hidden">
-      <div className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center gap-2">
-        <List size={10} className="text-indigo-500" />
-        <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[1.8px]">Mandatory Documentation Items</p>
+    <div className="bg-white dark:bg-slate-900 border border-navy-100 dark:border-gold-500/20 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 bg-navy-50 dark:bg-gold-500/10 border-b border-navy-100 dark:border-gold-500/20 flex items-center gap-2">
+        <List size={10} className="text-gold-600 dark:text-gold-400" />
+        <p className="text-[9px] font-bold text-navy-700 dark:text-gold-300 uppercase tracking-[1.8px]">Mandatory Documentation Items</p>
       </div>
       {loading ? (
         <div className="flex items-center gap-2 px-4 py-3">
-          <Loader2 size={11} className="animate-spin text-indigo-400" />
+          <Loader2 size={11} className="animate-spin text-gold-500" />
           <span className="text-[11px] text-slate-400">Loading checklist…</span>
         </div>
       ) : (
         <div className="px-4 py-3 space-y-1.5 max-h-60 overflow-y-auto">
           {checklist.map((item, idx) => (
             <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-              <span className="text-indigo-400 shrink-0 mt-0.5">·</span>
+              <span className="text-gold-500 shrink-0 mt-0.5">·</span>
               <span className="leading-snug">{item}</span>
             </div>
           ))}
@@ -1591,7 +1591,7 @@ export function ReportWorkspace() {
             onClick={() => setShowModalityChecklist(!showModalityChecklist)}
             className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg transition-colors
               ${showModalityChecklist
-                ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                ? 'bg-navy-100 dark:bg-gold-500/15 text-navy-700 dark:text-gold-300'
                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             title="Toggle mandatory documentation checklist">
             {loadingChecklist ? <Loader2 size={10} className="animate-spin" /> : <BookOpen size={10} />}
@@ -1725,14 +1725,14 @@ export function ReportWorkspace() {
         <SpellingResultBanner result={spellingResult} onDismiss={() => setSpellingResult(null)} />
 
         {selectedTemplate && (
-          <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/30 flex items-center gap-2 shrink-0">
-            <Layers size={11} className="text-indigo-500 shrink-0" />
-            <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">{selectedTemplate.name}</span>
-            <span className="text-[10px] text-indigo-400 dark:text-indigo-500">
+          <div className="px-4 py-2 bg-navy-50 dark:bg-gold-500/10 border-b border-navy-100 dark:border-gold-500/20 flex items-center gap-2 shrink-0">
+            <Layers size={11} className="text-gold-600 dark:text-gold-400 shrink-0" />
+            <span className="text-[11px] font-semibold text-navy-700 dark:text-gold-300">{selectedTemplate.name}</span>
+            <span className="text-[10px] text-navy-400 dark:text-gold-500/70">
               {selectedTemplate.structure.length} sections: {selectedTemplate.structure.map(s => s.label).join(' · ')}
             </span>
             <button onClick={() => handleTemplateSelect('')}
-              className="ml-auto text-[10px] font-medium text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">
+              className="ml-auto text-[10px] font-medium text-navy-400 hover:text-navy-600 dark:hover:text-gold-300 transition-colors">
               Remove
             </button>
           </div>

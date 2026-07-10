@@ -254,27 +254,50 @@ const GlobalStyles = () => (
       margin: 0;
     }
 
-    /* ── Responsive ── */
-    @media(max-width:768px){
-      .hero-h1{font-size:2.5rem!important}
-      .sec-h2{font-size:2rem!important}
+    /* ── Fluid type scale — scales smoothly across every viewport, no jumps ── */
+    .hero-h1  { font-size:clamp(2.15rem, 5.4vw + 0.6rem, 4.2rem)  !important; }
+    .sec-h2   { font-size:clamp(1.7rem,  3.4vw + 0.5rem, 2.9rem)  !important; }
+    .sec-h2-lg{ font-size:clamp(1.9rem,  4vw + 0.5rem, 3.2rem)    !important; }
+
+    /* ── Responsive layout — extra-wide monitors down to the smallest phones ── */
+    @media(max-width:1024px){
+      .hero-grid{grid-template-columns:1fr!important; gap:40px!important; text-align:center;}
+      .hero-img-col{max-width:520px; margin:0 auto;}
+      .hero-cta-row, .hero-social-row{justify-content:center!important;}
+      .desk-nav{gap:20px!important;}
+    }
+    @media(max-width:900px){
       .desk-nav{display:none!important}
       #demo-btn{display:none!important}
       #ham-btn{display:flex!important}
+      .feat-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important}
       .footer-grid{grid-template-columns:1fr 1fr!important}
     }
-    @media(min-width:769px){
+    @media(min-width:901px){
       #ham-btn{display:none!important}
       #demo-btn{display:inline-flex!important}
     }
     @media(max-width:640px){
-      .hero-grid{grid-template-columns:1fr!important}
       .feat-grid{grid-template-columns:1fr!important}
       .testi-grid{grid-template-columns:1fr!important}
       .sec-grid-2{grid-template-columns:1fr!important}
       .footer-grid{grid-template-columns:1fr!important}
       .wf-grid{grid-template-columns:1fr 1fr!important}
-      .hero-img-col{display:none!important}
+      section{padding-left:18px!important; padding-right:18px!important;}
+    }
+    @media(max-width:480px){
+      .wf-grid{grid-template-columns:1fr!important}
+      .num-big{font-size:2.2rem!important}
+      section{padding-top:52px!important; padding-bottom:52px!important;}
+    }
+    @media(max-width:360px){
+      .hero-h1{letter-spacing:-0.02em!important}
+      .chip{font-size:0.66rem!important; padding:6px 10px!important;}
+    }
+
+    /* ── Reduced motion accessibility ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   `}</style>
 );
@@ -661,7 +684,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
               </div>
 
               {/* CTAs */}
-              <div className="fu d4" style={{ marginTop:36, display:'flex', gap:12, flexWrap:'wrap', opacity:0 }}>
+              <div className="fu d4 hero-cta-row" style={{ marginTop:36, display:'flex', gap:12, flexWrap:'wrap', opacity:0 }}>
                 <button className="btn-p" onClick={onGetStarted} style={{ fontSize:'0.88rem', padding:'15px 32px' }}>
                   Start Free 14-Day Trial <ArrowRight size={15} />
                 </button>
@@ -671,7 +694,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
               </div>
 
               {/* Social proof */}
-              <div className="fu d5" style={{ marginTop:38, display:'flex', alignItems:'center', gap:22, flexWrap:'wrap', opacity:0 }}>
+              <div className="fu d5 hero-social-row" style={{ marginTop:38, display:'flex', alignItems:'center', gap:22, flexWrap:'wrap', opacity:0 }}>
                 <div style={{ display:'flex' }}>
                   {['AM','PS','RK','KN','SB'].map((ini, i) => (
                     <div key={i} style={{
@@ -959,7 +982,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             <div className="sec-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, alignItems:'start' }}>
               <div className="glass" style={{ borderRadius:10, padding:'44px 40px', borderTop:'3px solid rgba(200,168,75,0.4)' }}>
                 <div className="chip" style={{ marginBottom:18 }}><Lock size={12} /> Enterprise Security</div>
-                <h2 style={{ fontFamily:'var(--font-disp)', fontSize:'2.3rem', fontWeight:900, lineHeight:1.08, letterSpacing:'-0.01em', marginBottom:16, textTransform:'uppercase' }}>
+                <h2 className="sec-h2" style={{ fontFamily:'var(--font-disp)', fontSize:'2.3rem', fontWeight:900, lineHeight:1.08, letterSpacing:'-0.01em', marginBottom:16, textTransform:'uppercase' }}>
                   Healthcare-Grade<br /><span className="grad">Security Infrastructure</span>
                 </h2>
 
@@ -998,7 +1021,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
               <div id="enterprise" style={{ display:'flex', flexDirection:'column', gap:16 }}>
                 <div className="glass" style={{ borderRadius:10, padding:36, borderTop:'3px solid rgba(168,196,232,0.3)' }}>
                   <div className="chip" style={{ marginBottom:18 }}><TrendingUp size={12} /> Proven Performance</div>
-                  <h2 style={{ fontFamily:'var(--font-disp)', fontSize:'1.85rem', fontWeight:900, lineHeight:1.08, letterSpacing:'-0.01em', marginBottom:24, textTransform:'uppercase' }}>
+                  <h2 className="sec-h2" style={{ fontFamily:'var(--font-disp)', fontSize:'1.85rem', fontWeight:900, lineHeight:1.08, letterSpacing:'-0.01em', marginBottom:24, textTransform:'uppercase' }}>
                     Measurable Clinical Impact
                   </h2>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -1234,7 +1257,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
                 <div className="chip" style={{ marginBottom:22, display:'inline-flex' }}>
                   <Globe size={12} /> Trusted Across India &amp; Globally — 2026
                 </div>
-                <h2 style={{ fontFamily:'var(--font-disp)', fontSize:'3.2rem', fontWeight:900, lineHeight:1.06, letterSpacing:'-0.01em', marginBottom:18, textTransform:'uppercase' }}>
+                <h2 className="sec-h2-lg" style={{ fontFamily:'var(--font-disp)', fontSize:'3.2rem', fontWeight:900, lineHeight:1.06, letterSpacing:'-0.01em', marginBottom:18, textTransform:'uppercase' }}>
                   Redefine the Future of<br /><span className="grad">Radiology Reporting</span>
                 </h2>
                 <p style={{ fontSize:'1.04rem', lineHeight:1.84, color:'var(--muted)', maxWidth:600, margin:'0 auto 38px' }}>

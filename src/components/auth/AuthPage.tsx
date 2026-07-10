@@ -497,6 +497,9 @@ const CSS = `
   .auth-right { padding: 24px 16px; }
   .auth-card  { padding: 32px 24px; }
 }
+@media (max-width: 360px) {
+  .auth-card  { padding: 26px 18px; }
+}
 `;
 
 /* ─── Data ─────────────────────────────────────────────────── */

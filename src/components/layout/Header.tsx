@@ -1,4 +1,4 @@
-import { Search, Plus, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Page } from '../../types';
 
@@ -12,11 +12,13 @@ const PAGE_TITLES: Record<Page, string> = {
   settings: 'Settings',
 };
 
-const PAGE_ACTIONS: Partial<Record<Page, { label: string; action: 'new-report' | 'new-case' | 'new-template' | 'new-macro' }>> = {
-  cases: { label: 'New Case', action: 'new-case' },
-  templates: { label: 'New Template', action: 'new-template' },
-  macros: { label: 'New Macro', action: 'new-macro' },
-  dashboard: { label: 'New Report', action: 'new-report' },
+const PAGE_SUBTITLES: Partial<Record<Page, string>> = {
+  dashboard: 'Your clinical workspace at a glance',
+  report: 'Dictate, review and finalize with AI assistance',
+  cases: 'Track and manage patient cases',
+  templates: 'Build and reuse structured reporting templates',
+  macros: 'Quick-insert phrases for faster reporting',
+  settings: 'Account, preferences and letterhead',
 };
 
 interface HeaderProps {
@@ -24,10 +26,16 @@ interface HeaderProps {
   onMenuClick?: () => void;
 }
 
-export function Header({ onAction, onMenuClick }: HeaderProps) {
-  const { state, navigate } = useApp();
+/**
+ * Global top bar. Intentionally has no page-level "New …" action button —
+ * each page already owns a single, correctly-wired creation button, so a
+ * second one here would duplicate it. This bar stays lean: navigation,
+ * search and notifications only.
+ */
+export function Header({ onMenuClick }: HeaderProps) {
+  const { state } = useApp();
   const title = PAGE_TITLES[state.currentPage];
-  const pageAction = PAGE_ACTIONS[state.currentPage];
+  const subtitle = PAGE_SUBTITLES[state.currentPage];
 
   return (
     <header className="h-16 bg-white/90 dark:bg-navy-900/90 backdrop-blur-md border-b border-slate-200/70 dark:border-white/[0.06] flex items-center px-3 sm:px-5 lg:px-6 gap-2 sm:gap-4 shrink-0 sticky top-0 z-30">
@@ -39,13 +47,20 @@ export function Header({ onAction, onMenuClick }: HeaderProps) {
         <Menu size={20} />
       </button>
 
-      <h1 className="font-display font-bold text-slate-900 dark:text-white text-base sm:text-lg truncate shrink-0">
-        {title}
-      </h1>
+      <div className="min-w-0 shrink-0">
+        <h1 className="font-display font-bold text-slate-900 dark:text-white text-base sm:text-lg truncate leading-tight">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="hidden md:block text-[11px] text-slate-400 dark:text-slate-500 truncate leading-tight -mt-0.5">
+            {subtitle}
+          </p>
+        )}
+      </div>
 
       <div className="flex-1 max-w-xs ml-2 sm:ml-4 hidden sm:block">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative group">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-gold-500 transition-colors" />
           <input
             type="text"
             placeholder="Search reports, cases..."
@@ -62,28 +77,18 @@ export function Header({ onAction, onMenuClick }: HeaderProps) {
           <Search size={18} />
         </button>
 
-        <div className="text-xs text-slate-500 dark:text-slate-400 hidden lg:flex items-center gap-1.5">
+        <div className="text-xs text-slate-500 dark:text-slate-400 hidden lg:flex items-center gap-1.5 pr-1 mr-1 border-r border-slate-200/70 dark:border-white/10">
           <kbd className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 rounded-md text-[10px] font-mono">⌘N</kbd>
           <span>New Report</span>
         </div>
 
-        <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-gold-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors tap-target flex items-center justify-center">
+        <button
+          className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-gold-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors tap-target flex items-center justify-center"
+          aria-label="Notifications"
+        >
           <Bell size={17} />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-gold-400" />
         </button>
-
-        {pageAction && (
-          <button
-            onClick={() => {
-              if (pageAction.action === 'new-report') navigate('report');
-              else onAction?.(pageAction.action);
-            }}
-            className="btn-primary !px-3 !py-2 sm:!px-4 sm:!py-2.5"
-          >
-            <Plus size={15} />
-            <span className="hidden xs:inline">{pageAction.label}</span>
-          </button>
-        )}
       </div>
     </header>
   );
