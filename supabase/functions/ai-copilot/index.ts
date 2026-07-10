@@ -24,10 +24,13 @@ async function callGemini(
   maxTokens = 8192
 ): Promise<string> {
   const response = await fetch(
-    `${GEMINI_API_URL}?key=${Deno.env.get("GEMINI_API_KEY")}`,
+    GEMINI_API_URL,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-goog-api-key": Deno.env.get("GEMINI_API_KEY") ?? "",
+      },
       body: JSON.stringify({
         system_instruction: {
           parts: [{ text: systemPrompt }],
