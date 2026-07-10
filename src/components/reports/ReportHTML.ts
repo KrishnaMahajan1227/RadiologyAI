@@ -383,7 +383,29 @@ export function buildReportHTML(opts: {
   const regNumber       = p?.registration_number   ? String(p.registration_number)   : '';
   const hospitalAddress = p?.hospital_address      ? String(p.hospital_address)      : '';
   const hospitalPhone   = p?.hospital_phone        ? String(p.hospital_phone)        : '';
+  const hospitalEmail   = p?.hospital_email        ? String(p.hospital_email)        : '';
+  const hospitalWebsite = p?.hospital_website      ? String(p.hospital_website)      : '';
+  const hospitalLogoUrl = p?.hospital_logo_url     ? String(p.hospital_logo_url)     : '';
+  const hospitalRegNo   = p?.hospital_registration_number ? String(p.hospital_registration_number) : '';
   const department      = p?.department            ? String(p.department)            : 'Radiology';
+  const aerbLicense     = p?.aerb_license          ? String(p.aerb_license)          : '';
+  const subspecialty    = p?.specialty && String(p.specialty).toLowerCase() !== 'general'
+    ? String(p.specialty)
+    : '';
+
+  // Registration body — full name used both in the signature block and, if
+  // present, appended after the registration number for clarity.
+  const REGISTRATION_BODY_LABELS: Record<string, string> = {
+    nmc: 'NMC',
+    state_council: 'State Medical Council',
+    mci_legacy: 'MCI',
+    dnb: 'DNB Board',
+    other: 'Other',
+  };
+  const registrationBodyLabel = p?.registration_body
+    ? (REGISTRATION_BODY_LABELS[String(p.registration_body)] ?? String(p.registration_body))
+    : '';
+
 const customDisclaimer = p?.custom_disclaimer
   ? String(p.custom_disclaimer)
   : '';
@@ -444,15 +466,23 @@ const comparisonText =
     </tr>`;
   })();
 
+  // ── Registration expiry check ───────────────────────────────────────────────
+  const regExpiryRaw = p?.registration_expiry ? String(p.registration_expiry) : '';
+  const isRegExpired = regExpiryRaw ? new Date(regExpiryRaw).getTime() < Date.now() : false;
+
   // ── Watermark (Feature 6) ───────────────────────────────────────────────────
   const watermarkText = !regNumber
     ? 'INCOMPLETE — NOT FOR CLINICAL USE'
+    : isRegExpired
+    ? 'REGISTRATION EXPIRED — VERIFY BEFORE USE'
     : opts.amended
     ? 'AMENDED REPORT'
     : opts.preliminary
     ? 'PRELIMINARY — SUBJECT TO CHANGE'
     : '';
   const watermarkClass = !regNumber
+    ? 'wm-unsigned'
+    : isRegExpired
     ? 'wm-unsigned'
     : opts.amended
     ? 'wm-amended'
@@ -753,6 +783,25 @@ ${signatureStyle !== 'text_only' ? `
       border-bottom: 2pt solid #1c1c1c;
     }
 
+    .hospital-header__row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12pt;
+    }
+
+    .hospital-header__logo {
+      max-height: 42pt;
+      max-width: 90pt;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .hospital-header__identity {
+      flex: 1;
+      min-width: 0;
+    }
+
     .hospital-header__name {
       font-family: Arial, Helvetica, sans-serif;
       font-size: 17pt;
@@ -778,7 +827,8 @@ ${signatureStyle !== 'text_only' ? `
     }
 
     .hospital-header__address,
-    .hospital-header__phone {
+    .hospital-header__phone,
+    .hospital-header__contact {
       font-family: Arial, Helvetica, sans-serif;
       font-size: 8.5pt;
       color: #555;
@@ -1521,12 +1571,24 @@ ${signatureStyle !== 'text_only' ? `
 
     <!-- ── Hospital Header ───────────────────────────────────────────── -->
     <div class="hospital-header">
-      ${hospitalName
-        ? `<div class="hospital-header__name">${escHtml(hospitalName)}</div>`
-        : `<div class="hospital-header__name--placeholder">[Hospital / Centre Name]</div>`
-      }
-      ${hospitalAddress ? `<div class="hospital-header__address">${escHtml(hospitalAddress)}</div>` : ''}
-      ${hospitalPhone   ? `<div class="hospital-header__phone">Tel: ${escHtml(hospitalPhone)}</div>` : ''}
+      <div class="hospital-header__row">
+        ${hospitalLogoUrl ? `<img class="hospital-header__logo" src="${escHtml(hospitalLogoUrl)}" alt="${escHtml(hospitalName || 'Hospital logo')}" />` : ''}
+        <div class="hospital-header__identity">
+          ${hospitalName
+            ? `<div class="hospital-header__name">${escHtml(hospitalName)}</div>`
+            : `<div class="hospital-header__name--placeholder">[Hospital / Centre Name]</div>`
+          }
+          ${hospitalAddress ? `<div class="hospital-header__address">${escHtml(hospitalAddress)}</div>` : ''}
+          ${(hospitalPhone || hospitalEmail || hospitalWebsite)
+            ? `<div class="hospital-header__contact">${[
+                hospitalPhone   ? `Tel: ${escHtml(hospitalPhone)}` : '',
+                hospitalEmail   ? escHtml(hospitalEmail) : '',
+                hospitalWebsite ? escHtml(hospitalWebsite.replace(/^https?:\/\//i, '')) : '',
+              ].filter(Boolean).join('&nbsp;&nbsp;|&nbsp;&nbsp;')}</div>`
+            : ''
+          }
+        </div>
+      </div>
       <div class="hospital-header__dept">Department of ${escHtml(department)}</div>
       ${accredBadges.length > 0
         ? `<div class="accred-badges">${accredBadges.map(b => `<span class="accred-badge">${escHtml(b)}</span>`).join('')}</div>`
@@ -1604,11 +1666,12 @@ ${signatureStyle !== 'text_only' ? `
           ? `<div class="sig-unit__creds">${escHtml(credentials)}</div>`
           : `<div class="sig-unit__creds">[MD / DNB Radiodiagnosis]</div>`
         }
-        <div class="sig-unit__desig">${escHtml(designation)}</div>
+        <div class="sig-unit__desig">${escHtml(designation)}${subspecialty ? `&nbsp;&middot;&nbsp;${escHtml(subspecialty)}` : ''}</div>
         ${regNumber
-          ? `<div class="sig-unit__reg">MCI&nbsp;/&nbsp;NMC Reg. No.: ${escHtml(regNumber)}</div>`
+          ? `<div class="sig-unit__reg">MCI&nbsp;/&nbsp;NMC Reg. No.: ${escHtml(regNumber)}${registrationBodyLabel ? `&nbsp;(${escHtml(registrationBodyLabel)})` : ''}</div>`
           : `<div class="sig-unit__reg--missing">&#9888;&nbsp;MCI / NMC Registration Number Missing — Report not legally valid</div>`
         }
+        ${aerbLicense ? `<div class="sig-unit__reg">AERB License: ${escHtml(aerbLicense)}</div>` : ''}
         <div class="sig-unit__timestamp">Electronically signed &middot; ${escHtml(isoTs)}</div>
         <div class="sig-unit__esign">&#9679;&nbsp;E-SIGNED</div>
       </div>
@@ -1620,11 +1683,13 @@ ${customDisclaimer ? `
 ` : ''}
     <!-- ── Confidential ──────────────────────────────────────────────── -->
     <div class="confidential-notice">Confidential &mdash; For Clinical Use Only &mdash; Not to be Disclosed Without Authorisation</div>
+    <div class="confidential-notice">This is a digitally generated and electronically verified radiology report</div>
 
     <!-- ── Footer ───────────────────────────────────────────────────── -->
     <div class="report-footer">
       Report generated on ${escHtml(opts.dateStr)} at ${escHtml(opts.timeStr)}
       ${hospitalName ? `&nbsp;&middot;&nbsp;${escHtml(hospitalName)}` : ''}
+      ${hospitalRegNo ? `&nbsp;&middot;&nbsp;Reg. No: ${escHtml(hospitalRegNo)}` : ''}
       &nbsp;&middot;&nbsp;Accession: ${accession}
       &nbsp;&middot;&nbsp;Verification: ${verCode}
     </div>

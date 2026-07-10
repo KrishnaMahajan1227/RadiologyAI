@@ -29,59 +29,195 @@ import {
 import type { Suggestion, ReportError, Differential, StructuredData, Report } from '../../types';
 
 
+// ── normalizeKey: case/space/underscore-insensitive key comparison ───────────
+// Used to match a template's section label against whatever casing/format
+// Gemini happened to return the key in (e.g. "Clinical Information" vs
+// "clinical_information" vs "ClinicalInformation").
+function normalizeKey(k: string): string {
+  return k.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// ── repairTruncatedJson: closes any dangling string/object/array ─────────────
+// A truncated AI response (cut off mid-string because of a token limit) is the
+// single most common reason JSON.parse fails on a report payload. This walks
+// the text tracking open braces/brackets/quotes and closes whatever is left
+// open, so a partially-received object can still be parsed.
+function repairTruncatedJson(text: string): string {
+  let inString = false;
+  let escapeNext = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  let out = text.replace(/,\s*$/, '');
+  if (inString) out += '"';
+  while (stack.length) {
+    const open = stack.pop();
+    out += open === '{' ? '}' : ']';
+  }
+  return out;
+}
+
 // ── Utility: strip markdown code fences and parse JSON safely ────────────────
+// Tries, in order: direct parse -> brace-isolation -> truncation repair.
 function stripFencesAndParse(raw: string): Record<string, unknown> | null {
+  const clean = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+
   try {
-    const clean = raw
-      .trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/i, '')
-      .trim();
-    if (clean.startsWith('{')) return JSON.parse(clean);
-  } catch { /* ignore */ }
+    return JSON.parse(clean);
+  } catch { /* continue */ }
+
+  const first = clean.indexOf('{');
+  const last = clean.lastIndexOf('}');
+  if (first !== -1 && last > first) {
+    const candidate = clean.slice(first, last + 1);
+    try { return JSON.parse(candidate); } catch { /* continue */ }
+    try { return JSON.parse(repairTruncatedJson(clean.slice(first))); } catch { /* continue */ }
+  }
+
   return null;
 }
 
+// ── coerceToText: turns any AI-returned value into safe display text ─────────
+// Gemini's JSON mode doesn't always honour the requested type — a "findings"
+// field that was asked for as a string sometimes comes back as an array of
+// bullet strings, or occasionally a nested object. Calling .trim() on those
+// directly is what crashed the app ("value.trim is not a function"). This
+// normalizes any shape into readable text without ever throwing.
+function coerceToText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => coerceToText(item))
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    // Common nested text keys the AI sometimes wraps content in
+    for (const key of ['text', 'content', 'value', 'description']) {
+      if (typeof obj[key] === 'string') return obj[key] as string;
+    }
+    // Otherwise join whatever string-ish leaves it has
+    const parts = Object.values(obj)
+      .map((v) => (typeof v === 'string' ? v : Array.isArray(v) ? coerceToText(v) : ''))
+      .filter(Boolean);
+    if (parts.length) return parts.join('\n');
+    return '';
+  }
+
+  return '';
+}
+
+// ── extractFieldByRegex: last-resort field-level recovery from broken JSON ───
+// If the overall JSON couldn't be parsed at all, this pulls just the one field
+// we need directly out of the text with a tolerant regex, so a single bad
+// field elsewhere in the payload doesn't take the whole section down with it.
+function extractFieldByRegex(raw: string, field: string): string | null {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`"${escaped}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'i');
+  const m = raw.match(re);
+  if (!m) return null;
+  try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; }
+}
+
 // ── extractFieldOrRaw: pulls a specific field from a JSON string or returns plain text ──
-// Handles: plain text, JSON objects, markdown-fenced JSON, nested objects, case-insensitive keys
-function extractFieldOrRaw(value: string | undefined | null, field: string): string {
-  if (!value) return '';
+// Handles: plain text, JSON objects, markdown-fenced JSON, nested objects, case-insensitive
+// keys, non-string values (arrays/objects/numbers from the AI), and truncated/malformed JSON.
+// Importantly, this NEVER returns raw JSON syntax to the UI and NEVER throws — if nothing
+// can be recovered it returns '' so the field shows an empty state (with the raw value still
+// logged to the console for debugging) instead of a JSON blob or a crash.
+function extractFieldOrRaw(value: unknown, field: string): string {
+  if (value === null || value === undefined || value === '') return '';
+
+  // Non-string values (arrays, objects, numbers) — normalize instead of crashing.
+  if (typeof value !== 'string') {
+    return coerceToText(value);
+  }
+
   const trimmed = value.trim();
+  if (!trimmed) return '';
 
   // Fast path: doesn't look like JSON
   if (!trimmed.startsWith('{') && !trimmed.startsWith('```')) return trimmed;
 
   const parsed = stripFencesAndParse(trimmed);
-  if (!parsed) return trimmed; // not valid JSON, return as-is (plain text is fine)
 
-  // Exact key match
-  if (typeof parsed[field] === 'string') return (parsed[field] as string).trim();
+  if (parsed) {
+    // Exact key match
+    if (field in parsed) return coerceToText(parsed[field]);
 
-  // Case-insensitive key match (handles "Technique" vs "technique", "Findings" vs "findings")
-  const matchKey = Object.keys(parsed).find(k => k.toLowerCase() === field.toLowerCase());
-  if (matchKey && typeof parsed[matchKey] === 'string') return (parsed[matchKey] as string).trim();
+    // Case/format-insensitive key match (handles "Technique" vs "technique",
+    // "Clinical Information" vs "clinical_information", etc.)
+    const targetNorm = normalizeKey(field);
+    const matchKey = Object.keys(parsed).find(k => normalizeKey(k) === targetNorm);
+    if (matchKey) return coerceToText(parsed[matchKey]);
 
-  // If we got a JSON blob but can't find the field, fall back to full_report reconstruction
-  const fullReport = parsed['full_report'] as string | undefined;
-  if (fullReport) {
-    // Try to extract the section from full_report text
-    const sectionRe = new RegExp(`(?:^|\\n)${field}[:\\s]*\\n([\\s\\S]*?)(?=\\n[A-Z][A-Z ]{2,}[:\\n]|$)`, 'i');
-    const m = fullReport.match(sectionRe);
-    if (m?.[1]) return m[1].trim();
+    // If we got a JSON blob but can't find the field, fall back to full_report reconstruction
+    const fullReport = typeof parsed['full_report'] === 'string' ? parsed['full_report'] as string : '';
+    if (fullReport) {
+      const sectionRe = new RegExp(`(?:^|\\n)${field}[:\\s]*\\n([\\s\\S]*?)(?=\\n[A-Z][A-Z ]{2,}[:\\n]|$)`, 'i');
+      const m = fullReport.match(sectionRe);
+      if (m?.[1]) return m[1].trim();
+    }
+
+    // Parsed fine but this specific field is genuinely missing/empty.
+    return '';
   }
 
-  // Nothing worked — return trimmed input so UI shows something rather than blank
-  return trimmed;
+  // JSON couldn't be parsed at all (likely truncated) — try to recover just
+  // this one field directly from the raw text before giving up.
+  const recovered = extractFieldByRegex(trimmed, field);
+  if (recovered) return recovered.trim();
+
+  // Nothing recoverable. Log it for debugging, but never show raw JSON to the user.
+  console.warn(`[Report] Could not parse AI response for field "${field}"`, trimmed.slice(0, 300));
+  return '';
 }
 
 // ── safeText: returns the best readable text from any value ──────────────────
-function safeText(value: string | undefined | null): string {
-  if (!value) return '';
+function safeText(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value !== 'string') return coerceToText(value);
   const trimmed = value.trim();
+  if (!trimmed) return '';
   if (!trimmed.startsWith('{') && !trimmed.startsWith('```')) return trimmed;
   const parsed = stripFencesAndParse(trimmed);
-  if (!parsed) return trimmed;
-  return (parsed['full_report'] as string) || (parsed['findings'] as string) || trimmed;
+  if (!parsed) return '';
+  return coerceToText(parsed['full_report']) || coerceToText(parsed['findings']) || '';
+}
+
+// ── findSectionValue: normalized-key lookup into a label->content map ────────
+// Matches a template section's label against the AI response's extra-sections
+// map regardless of case/space/underscore differences. Values may not always
+// be plain strings (see coerceToText above), so this normalizes them too.
+function findSectionValue(map: Record<string, unknown> | undefined, label: string): string | undefined {
+  if (!map) return undefined;
+  if (label in map) {
+    const v = coerceToText(map[label]);
+    return v || undefined;
+  }
+  const targetNorm = normalizeKey(label);
+  const matchKey = Object.keys(map).find(k => normalizeKey(k) === targetNorm);
+  if (!matchKey) return undefined;
+  const v = coerceToText(map[matchKey]);
+  return v || undefined;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -988,22 +1124,47 @@ export function ReportWorkspace() {
       const rawFindings    = reportObj.findings            as string | undefined;
       const rawImpression  = reportObj.impression          as string | undefined;
 
-      setTechnique (extractFieldOrRaw(rawTechnique,   'technique'));
-      setClinicalInfo(extractFieldOrRaw(rawClinical,  'clinical_information'));
-      setFindings  (extractFieldOrRaw(rawFindings,    'findings'));
-      setImpression(extractFieldOrRaw(rawImpression,  'impression'));
+      const finalTechnique  = extractFieldOrRaw(rawTechnique,   'technique');
+      const finalClinical   = extractFieldOrRaw(rawClinical,    'clinical_information');
+      const finalFindings   = extractFieldOrRaw(rawFindings,    'findings');
+      const finalImpression = extractFieldOrRaw(rawImpression,  'impression');
+
+      setTechnique(finalTechnique);
+      setClinicalInfo(finalClinical);
+      setFindings(finalFindings);
+      setImpression(finalImpression);
       setSuggestions(result.suggestions || []);
       setErrors(result.errors || []);
       setQuestions(result.questions || []);
 
-      // Extra template sections
+      // Extra template sections — matched case/format-insensitively since the AI
+      // doesn't always echo back the exact label casing it was given.
       const reportData = result.report as Record<string, unknown>;
-      const extraSections = reportData._extra_sections as Record<string, string> | undefined;
+      const extraSections = reportData._extra_sections as Record<string, unknown> | undefined;
       if (selectedTemplateId && templateSections.length > 0 && extraSections) {
         setTemplateSections((prev) => prev.map((sec) => {
-          const matchedValue = extraSections[sec.label];
-          return matchedValue ? { ...sec, content: matchedValue } : sec;
+          const matchedValue = findSectionValue(extraSections, sec.label);
+          return matchedValue ? { ...sec, content: matchedValue.trim() } : sec;
         }));
+      }
+
+      // If the backend flagged a hard parse failure, surface it clearly instead
+      // of silently leaving blank/garbled sections.
+      if ((reportData as { generation_failed?: boolean }).generation_failed) {
+        setError(
+          (reportData as { error_message?: string }).error_message ||
+          'The AI response could not be read. Please try Generate again.'
+        );
+      } else if (!finalTechnique && !finalClinical && !finalFindings && !finalImpression) {
+        // Safety net: every section came back empty but the call itself didn't
+        // throw (this happens if an older/un-redeployed edge function returns a
+        // shape the current frontend can't map). Surface it loudly instead of
+        // leaving a silently blank workspace with no report visible.
+        setError(
+          'The AI returned no readable report content. This usually means the ' +
+          'ai-copilot edge function on Supabase is running an older build — ' +
+          'redeploy it (supabase functions deploy ai-copilot) and try again.'
+        );
       }
 
       // Conditional template sections based on findings
@@ -1367,6 +1528,21 @@ export function ReportWorkspace() {
 
       {/* ── Main Workspace ───────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+        {/* ── Error banner ─────────────────────────────────────────────────── */}
+        {error && (
+          <div className="flex items-start gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 text-xs shrink-0">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            <span className="flex-1">{error}</span>
+            <button
+              onClick={() => setError('')}
+              className="text-red-500 hover:text-red-700 dark:hover:text-red-300 shrink-0"
+              aria-label="Dismiss error"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* ── Top Toolbar ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex-wrap">

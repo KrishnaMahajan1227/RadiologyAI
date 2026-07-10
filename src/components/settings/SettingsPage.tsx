@@ -209,6 +209,12 @@ export function SettingsPage() {
   const [hospitalName, setHospitalName] = useState(p?.hospital_name ?? '');
   const [hospitalAddress, setHospitalAddress] = useState(p?.hospital_address ?? '');
   const [hospitalPhone, setHospitalPhone] = useState(p?.hospital_phone ?? '');
+  const [hospitalEmail, setHospitalEmail] = useState((p as any)?.hospital_email ?? '');
+  const [hospitalWebsite, setHospitalWebsite] = useState((p as any)?.hospital_website ?? '');
+  const [hospitalLogoUrl, setHospitalLogoUrl] = useState((p as any)?.hospital_logo_url ?? '');
+  const [hospitalRegistrationNumber, setHospitalRegistrationNumber] = useState(
+    (p as any)?.hospital_registration_number ?? ''
+  );
   const [doctorCredentials, setDoctorCredentials] = useState(p?.doctor_credentials ?? '');
   const [registrationNumber, setRegistrationNumber] = useState(p?.registration_number ?? '');
   const [designation, setDesignation] = useState(p?.designation ?? '');
@@ -269,6 +275,10 @@ useEffect(() => {
   setHospitalName(p.hospital_name ?? '');
   setHospitalAddress(p.hospital_address ?? '');
   setHospitalPhone(p.hospital_phone ?? '');
+  setHospitalEmail((p as any)?.hospital_email ?? '');
+  setHospitalWebsite((p as any)?.hospital_website ?? '');
+  setHospitalLogoUrl((p as any)?.hospital_logo_url ?? '');
+  setHospitalRegistrationNumber((p as any)?.hospital_registration_number ?? '');
 
   setDoctorCredentials(p.doctor_credentials ?? '');
   setRegistrationNumber(p.registration_number ?? '');
@@ -343,6 +353,10 @@ useEffect(() => {
           hospital_name: hospitalName,
           hospital_address: hospitalAddress,
           hospital_phone: hospitalPhone,
+          hospital_email: hospitalEmail,
+          hospital_website: hospitalWebsite,
+          hospital_logo_url: hospitalLogoUrl,
+          hospital_registration_number: hospitalRegistrationNumber,
           doctor_credentials: doctorCredentials,
           registration_number: registrationNumber,
           designation,
@@ -585,6 +599,19 @@ if (error) throw error;
             />
           </div>
           <div className="col-span-2">
+            <label className={labelCls}>Logo URL</label>
+            <input
+              type="text"
+              value={hospitalLogoUrl}
+              onChange={(e) => setHospitalLogoUrl(e.target.value)}
+              placeholder="https://your-hospital.com/logo.png"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Public image URL. Printed at the top-left of every report letterhead.
+            </p>
+          </div>
+          <div className="col-span-2">
             <label className={labelCls}>Address</label>
             <input
               type="text"
@@ -603,6 +630,39 @@ if (error) throw error;
               placeholder="+91 1234 567 890"
               className={inputCls}
             />
+          </div>
+          <div>
+            <label className={labelCls}>Email</label>
+            <input
+              type="email"
+              value={hospitalEmail}
+              onChange={(e) => setHospitalEmail(e.target.value)}
+              placeholder="reports@hospital.com"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Website</label>
+            <input
+              type="text"
+              value={hospitalWebsite}
+              onChange={(e) => setHospitalWebsite(e.target.value)}
+              placeholder="www.hospital.com"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Clinical Establishment Reg. No.</label>
+            <input
+              type="text"
+              value={hospitalRegistrationNumber}
+              onChange={(e) => setHospitalRegistrationNumber(e.target.value)}
+              placeholder="CEA/2024/00123"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Diagnostic centre / establishment registration — shown in the report footer.
+            </p>
           </div>
         </div>
       </SectionCard>
@@ -847,25 +907,34 @@ if (error) throw error;
       {/* ── REPORT HEADER PREVIEW ────────────────────────────────────────── */}
       <SectionCard icon={FileText} title="Report Header Preview">
         <div className="bg-white border border-gray-300 rounded-lg p-6 font-serif text-gray-900 text-[13px] shadow-inner">
-          {/* Hospital name */}
-          {hospitalName && (
-            <h4 className="text-center text-base font-bold border-b border-gray-300 pb-2 mb-1">
-              {hospitalName}
-            </h4>
-          )}
-          {!hospitalName && (
-            <h4 className="text-center text-base font-bold border-b border-gray-300 pb-2 mb-1 text-gray-300">
-              [Hospital Name]
-            </h4>
-          )}
+          {/* Logo + hospital name */}
+          <div className="flex items-center justify-center gap-3 border-b border-gray-300 pb-2 mb-1">
+            {hospitalLogoUrl && (
+              <img
+                src={hospitalLogoUrl}
+                alt="Hospital logo"
+                className="h-9 max-w-[90px] object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            {hospitalName ? (
+              <h4 className="text-center text-base font-bold">{hospitalName}</h4>
+            ) : (
+              <h4 className="text-center text-base font-bold text-gray-300">[Hospital Name]</h4>
+            )}
+          </div>
 
-          {/* Address / phone */}
+          {/* Address / phone / email / website */}
           {hospitalAddress && (
             <p className="text-center text-[11px] text-gray-600 mb-0.5">{hospitalAddress}</p>
           )}
-          {hospitalPhone && (
+          {(hospitalPhone || hospitalEmail || hospitalWebsite) && (
             <p className="text-center text-[11px] text-gray-600 mb-1.5">
-              Tel: {hospitalPhone}
+              {[
+                hospitalPhone ? `Tel: ${hospitalPhone}` : '',
+                hospitalEmail,
+                hospitalWebsite,
+              ].filter(Boolean).join('  |  ')}
             </p>
           )}
 

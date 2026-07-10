@@ -10,6 +10,10 @@ export interface Profile {
   hospital_name: string;
   hospital_address: string;
   hospital_phone: string;
+  hospital_email?: string;
+  hospital_website?: string;
+  hospital_logo_url?: string;
+  hospital_registration_number?: string;
 
   doctor_credentials: string;
   registration_number: string;

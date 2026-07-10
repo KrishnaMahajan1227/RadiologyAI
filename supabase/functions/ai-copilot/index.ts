@@ -56,6 +56,138 @@ async function callGemini(
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
+// ─── JSON robustness helpers ───────────────────────────────────────────────────
+// BUG FIX 8: Gemini's JSON-mode output can still be truncated (hits maxOutputTokens
+//            mid-string) or contain a stray unescaped character. When that happened,
+//            the OLD code fell straight to a catch-all that dumped the entire raw
+//            (broken) JSON text into "findings"/"full_report" — which is exactly
+//            why the UI sometimes showed a raw JSON blob instead of a report.
+//            extractJsonObject() below tries several recovery strategies before
+//            giving up, and NONE of them ever return raw JSON text as report content.
+
+function normalizeKey(k: string): string {
+  return k.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Gemini's JSON mode doesn't always honour the requested type — a field asked
+// for as a string sometimes comes back as an array of bullet strings, or a
+// nested object. This normalizes any shape into plain text so downstream code
+// (and the frontend) never has to guess, and never crashes calling .trim() on
+// something that isn't a string.
+function coerceToText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => coerceToText(item)).filter(Boolean).join("\n");
+  }
+
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of ["text", "content", "value", "description"]) {
+      if (typeof obj[key] === "string") return obj[key] as string;
+    }
+    const parts = Object.values(obj)
+      .map((v) => (typeof v === "string" ? v : Array.isArray(v) ? coerceToText(v) : ""))
+      .filter(Boolean);
+    return parts.join("\n");
+  }
+
+  return "";
+}
+
+// Balances/repairs a truncated JSON string by closing any open string/array/object.
+function repairTruncatedJson(text: string): string {
+  let inString = false;
+  let escapeNext = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === "\\") { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  let out = text;
+  // Drop a trailing dangling comma/colon fragment before closing, if present
+  out = out.replace(/,\s*$/, "");
+  if (inString) out += '"';
+  while (stack.length) {
+    const open = stack.pop();
+    out += open === "{" ? "}" : "]";
+  }
+  return out;
+}
+
+// Attempts, in order: direct parse -> fenced/outer-brace isolation -> truncation repair.
+// Returns null only if nothing usable could be recovered.
+function extractJsonObject(raw: string): Record<string, unknown> | null {
+  if (!raw) return null;
+  let text = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
+  try { return JSON.parse(text); } catch { /* continue */ }
+
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last > first) {
+    const candidate = text.slice(first, last + 1);
+    try { return JSON.parse(candidate); } catch { /* continue */ }
+
+    try {
+      const repaired = repairTruncatedJson(text.slice(first));
+      return JSON.parse(repaired);
+    } catch { /* continue */ }
+  }
+
+  return null;
+}
+
+// Last-resort field-level recovery: pull individual "key": "value" pairs out of
+// text that still isn't valid JSON (e.g. one bad field broke the whole document).
+function extractFieldsByRegex(raw: string, fields: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of fields) {
+    const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`"${escaped}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "i");
+    const m = raw.match(re);
+    if (m) {
+      try { out[field] = JSON.parse(`"${m[1]}"`); } catch { out[field] = m[1]; }
+    }
+  }
+  return out;
+}
+
+// Same recovery strategy as extractJsonObject, but for top-level JSON arrays.
+function extractJsonArray(raw: string): unknown[] | null {
+  if (!raw) return null;
+  let text = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed;
+    // Sometimes wrapped as { "items": [...] } / { "suggestions": [...] } etc.
+    for (const v of Object.values(parsed)) {
+      if (Array.isArray(v)) return v;
+    }
+    return null;
+  } catch { /* continue */ }
+
+  const first = text.indexOf("[");
+  const last = text.lastIndexOf("]");
+  if (first !== -1 && last > first) {
+    const candidate = text.slice(first, last + 1);
+    try { return JSON.parse(candidate); } catch { /* continue */ }
+    try { return JSON.parse(repairTruncatedJson(text.slice(first))); } catch { /* continue */ }
+  }
+
+  return null;
+}
+
 // ─── extractStructuredData ────────────────────────────────────────────────────
 async function extractStructuredData(
   inputText: string,
@@ -85,11 +217,15 @@ Return only valid JSON.`;
   const userPrompt = `Scan type: ${scanType || "Unknown"}\n\nDictation/Notes:\n${inputText}`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true);
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { raw_input: inputText };
-  }
+  const parsed = extractJsonObject(raw);
+  if (parsed) return parsed;
+
+  // Recoverable field-level fallback — never surface raw JSON to the UI.
+  const recovered = extractFieldsByRegex(raw, [
+    "modality", "body_part", "clinical_indication", "technique", "comparison",
+    "laterality", "contrast", "scan_quality",
+  ]);
+  return Object.keys(recovered).length > 0 ? recovered : {};
 }
 
 // ─── generateReport ───────────────────────────────────────────────────────────
@@ -271,90 +407,154 @@ ${JSON.stringify(structuredData, null, 2)}
 
 REQUIREMENT: This is a COMPLETE study. Every relevant anatomical structure within the field of view must be accounted for. The report must feel written by a seasoned senior radiologist — not AI-generated. No shortcuts, no truncation, no template dumping.`;
 
-  // BUG FIX 5: 16384 tokens for report generation
-  const raw = await callGemini(systemPrompt, userPrompt, true, 16384);
+  // BUG FIX 5: 24576 tokens for report generation — headroom for large templates
+  //            so responses are far less likely to be cut off mid-JSON.
+  const raw = await callGemini(systemPrompt, userPrompt, true, 24576);
 
-  try {
-    const result = JSON.parse(raw);
+  // BUG FIX 8: robust parse — tries direct parse, brace-isolation, then
+  // truncation repair. Only if ALL of those fail do we fall back to
+  // field-level regex recovery. Raw JSON text is NEVER assigned into a
+  // report field anymore (this was the cause of the "output shows as JSON" bug).
+  const parsedResult = extractJsonObject(raw);
+  let result: Record<string, unknown>;
 
-    // Template mode: map standard fields if not already present
-    if (isTemplateMode) {
-      const techniqueSection = sectionList.find((s) => s.toLowerCase() === "technique");
-      const findingsSection = sectionList.find((s) =>
-        s.toLowerCase().includes("finding")
-      );
-      const impressionSection = sectionList.find((s) =>
-        s.toLowerCase() === "impression"
-      );
-      const clinicalSection = sectionList.find((s) =>
-        s.toLowerCase().includes("clinical")
-      );
-
-      if (!result.technique && techniqueSection && result[techniqueSection]) {
-        result.technique = result[techniqueSection];
-      }
-      if (!result.findings && findingsSection && result[findingsSection]) {
-        result.findings = result[findingsSection];
-      }
-      if (!result.impression && impressionSection && result[impressionSection]) {
-        result.impression = result[impressionSection];
-      }
-      if (!result.clinical_information && clinicalSection && result[clinicalSection]) {
-        result.clinical_information = result[clinicalSection];
-      }
-
-      // Collect non-standard extra sections
-      const standardLabels = ["technique", "clinical_information", "findings", "impression"];
-      const extraSections: Record<string, string> = {};
-      for (const [key, value] of Object.entries(result)) {
-        if (
-          typeof value === "string" &&
-          !standardLabels.includes(key.toLowerCase()) &&
-          key !== "full_report" &&
-          key !== "negatives_removed"
-        ) {
-          extraSections[key] = value;
-        }
-      }
-      result._extra_sections = extraSections;
+  if (parsedResult) {
+    result = parsedResult;
+  } else {
+    const fieldNames = Array.from(new Set([
+      "technique", "clinical_information", "findings", "impression", "full_report",
+      ...sectionList,
+    ]));
+    const recovered = extractFieldsByRegex(raw, fieldNames);
+    if (Object.keys(recovered).length === 0) {
+      // Truly nothing usable came back — surface a clear, honest state instead
+      // of raw/garbled text so the radiologist knows to regenerate.
+      return {
+        technique: "",
+        clinical_information: "",
+        findings: "",
+        impression: "",
+        full_report: "",
+        negatives_removed: [],
+        generation_failed: true,
+        error_message:
+          "The AI response could not be read (it may have been cut off). Please try Generate again.",
+      };
     }
-
-    // BUG FIX 6: Always ensure required fields exist
-    if (!result.technique) result.technique = "";
-    if (!result.clinical_information) result.clinical_information = "";
-    if (!result.findings) result.findings = "";
-    if (!result.impression) result.impression = "";
-    if (!result.negatives_removed) result.negatives_removed = [];
-
-    // BUG FIX 7: Build proper full_report with section headings if not provided
-    if (!result.full_report || result.full_report.trim().length < 50) {
-      const parts: string[] = [];
-      if (result.technique) parts.push(`TECHNIQUE\n${result.technique}`);
-      if (result.clinical_information)
-        parts.push(`CLINICAL INFORMATION\n${result.clinical_information}`);
-      if (result.findings) parts.push(`FINDINGS\n${result.findings}`);
-      if (result.impression) parts.push(`IMPRESSION\n${result.impression}`);
-      // Append any extra template sections
-      if (result._extra_sections) {
-        for (const [k, v] of Object.entries(result._extra_sections as Record<string, string>)) {
-          if (v) parts.push(`${k.toUpperCase()}\n${v}`);
-        }
-      }
-      result.full_report = parts.join("\n\n");
-    }
-
-    return result;
-  } catch {
-    // If JSON parse fails entirely, return raw text as findings
-    return {
-      technique: "",
-      clinical_information: "",
-      findings: raw,
-      impression: "",
-      full_report: raw,
-      negatives_removed: [],
-    };
+    result = recovered;
   }
+
+  // Template mode: map standard fields using normalized (case/space/underscore
+  // insensitive) key matching — Gemini doesn't always return the exact-case
+  // label it was asked for, and an exact-match lookup silently left sections empty.
+  if (isTemplateMode) {
+    const resultKeysByNorm = new Map<string, string>();
+    for (const key of Object.keys(result)) {
+      resultKeysByNorm.set(normalizeKey(key), key);
+    }
+    const findByNorm = (label: string): unknown => {
+      const exact = resultKeysByNorm.get(normalizeKey(label));
+      if (exact) return result[exact];
+      return undefined;
+    };
+
+    const techniqueSection  = sectionList.find((s) => normalizeKey(s) === "technique");
+    const findingsSection   = sectionList.find((s) => normalizeKey(s).includes("finding"));
+    const impressionSection = sectionList.find((s) => normalizeKey(s) === "impression");
+    const clinicalSection   = sectionList.find((s) => normalizeKey(s).includes("clinical"));
+
+    if (!result.technique && techniqueSection) {
+      const v = findByNorm(techniqueSection);
+      if (v) result.technique = v;
+    }
+    if (!result.findings && findingsSection) {
+      const v = findByNorm(findingsSection);
+      if (v) result.findings = v;
+    }
+    if (!result.impression && impressionSection) {
+      const v = findByNorm(impressionSection);
+      if (v) result.impression = v;
+    }
+    if (!result.clinical_information && clinicalSection) {
+      const v = findByNorm(clinicalSection);
+      if (v) result.clinical_information = v;
+    }
+
+    // Collect non-standard extra sections, keyed by the ORIGINAL template label
+    // (not whatever casing Gemini happened to use) so the frontend's exact-label
+    // lookup for custom template sections always finds a match.
+    const standardNorm = new Set(["technique", "clinicalinformation", "findings", "impression"]);
+    const extraSections: Record<string, string> = {};
+    for (const label of sectionList) {
+      const norm = normalizeKey(label);
+      if (standardNorm.has(norm)) continue;
+      const text = coerceToText(findByNorm(label));
+      if (text) extraSections[label] = text;
+    }
+    // Also sweep any remaining fields from the raw result that don't map
+    // to a known template label but aren't metadata either (belt-and-braces).
+    for (const [key, value] of Object.entries(result)) {
+      if (
+        (typeof value === "string" || Array.isArray(value) || typeof value === "object") &&
+        !standardNorm.has(normalizeKey(key)) &&
+        key !== "full_report" &&
+        key !== "negatives_removed" &&
+        key !== "error_message" &&
+        key !== "_extra_sections" &&
+        !Object.prototype.hasOwnProperty.call(extraSections, key) &&
+        sectionList.some((s) => normalizeKey(s) === normalizeKey(key))
+      ) {
+        const text = coerceToText(value);
+        if (text) extraSections[key] = text;
+      }
+    }
+    result._extra_sections = extraSections;
+  }
+
+  // BUG FIX 10: coerce every text field to a real string BEFORE the empty-checks
+  // below — otherwise a non-empty array/object value would pass the truthiness
+  // check unmodified and reach the frontend as a non-string, which crashed
+  // there when it tried to call .trim() on it.
+  result.technique            = coerceToText(result.technique);
+  result.clinical_information = coerceToText(result.clinical_information);
+  result.findings              = coerceToText(result.findings);
+  result.impression            = coerceToText(result.impression);
+  if (result._extra_sections) {
+    const coercedExtras: Record<string, string> = {};
+    for (const [k, v] of Object.entries(result._extra_sections as Record<string, unknown>)) {
+      const text = coerceToText(v);
+      if (text) coercedExtras[k] = text;
+    }
+    result._extra_sections = coercedExtras;
+  }
+
+  // BUG FIX 6: Always ensure required fields exist
+  if (!result.technique) result.technique = "";
+  if (!result.clinical_information) result.clinical_information = "";
+  if (!result.findings) result.findings = "";
+  if (!result.impression) result.impression = "";
+  if (!result.negatives_removed) result.negatives_removed = [];
+
+  // BUG FIX 7: Build proper full_report with section headings if not provided
+  if (typeof result.full_report !== "string" || result.full_report.trim().length < 50) {
+    const parts: string[] = [];
+    if (result.technique) parts.push(`TECHNIQUE\n${result.technique}`);
+    if (result.clinical_information)
+      parts.push(`CLINICAL INFORMATION\n${result.clinical_information}`);
+    if (result.findings) parts.push(`FINDINGS\n${result.findings}`);
+    if (result.impression) parts.push(`IMPRESSION\n${result.impression}`);
+    // Append any extra template sections
+    if (result._extra_sections) {
+      for (const [k, v] of Object.entries(result._extra_sections as Record<string, string>)) {
+        if (v) parts.push(`${k.toUpperCase()}\n${v}`);
+      }
+    }
+    result.full_report = parts.join("\n\n");
+  } else {
+    result.full_report = coerceToText(result.full_report);
+  }
+
+  return result;
 }
 
 // ─── suggestImprovements ──────────────────────────────────────────────────────
@@ -393,12 +593,7 @@ Return empty array [] if the report is clinically sound. Return only JSON.`;
   )}`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true);
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : parsed.suggestions ?? [];
-  } catch {
-    return [];
-  }
+  return extractJsonArray(raw) ?? [];
 }
 
 // ─── generateDifferential ─────────────────────────────────────────────────────
@@ -423,12 +618,7 @@ Return only a JSON array, ordered by likelihood.`;
   const userPrompt = `Modality: ${modality}\nBody Part: ${bodyPart}\nFindings: ${findings}`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true);
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : parsed.differentials ?? [];
-  } catch {
-    return [];
-  }
+  return extractJsonArray(raw) ?? [];
 }
 
 // ─── detectErrors ─────────────────────────────────────────────────────────────
@@ -471,8 +661,7 @@ Return empty array [] if no REAL issues found. Return only JSON.`;
 
   try {
     const raw = await callGemini(systemPrompt, userPrompt, true);
-    const parsed = JSON.parse(raw);
-    const aiErrors = Array.isArray(parsed) ? parsed : parsed.errors ?? [];
+    const aiErrors = extractJsonArray(raw) ?? [];
     const significantErrors = aiErrors.filter(
       (e: Record<string, unknown>) =>
         e.severity === "error" &&
@@ -503,12 +692,7 @@ Return JSON array of question strings. Return only a JSON array.`;
   )}`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true);
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : parsed.questions ?? [];
-  } catch {
-    return [];
-  }
+  return (extractJsonArray(raw) as string[] | null) ?? [];
 }
 
 // ─── generateDiseaseFormat ────────────────────────────────────────────────────
@@ -544,11 +728,7 @@ Return JSON with:
   }\nBody Part: ${bodyPart || "relevant area"}\n\nGenerate a professional reference report template for this condition.`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true, 8192);
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { disease: diseaseName, error: "Failed to generate format" };
-  }
+  return extractJsonObject(raw) ?? { disease: diseaseName, error: "Failed to generate format" };
 }
 
 // ─── fixSpellingAndNegatives ──────────────────────────────────────────────────
@@ -571,11 +751,29 @@ Return JSON with:
   const userPrompt = `Please correct this radiology report:\n\n${reportText}`;
 
   const raw = await callGemini(systemPrompt, userPrompt, true, 12288);
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { corrected_report: reportText, total_changes: 0 };
-  }
+  return extractJsonObject(raw) ?? { corrected_report: reportText, total_changes: 0 };
+}
+
+// ─── generateModalityChecklist ────────────────────────────────────────────────
+// BUG FIX 9: The frontend (generateModalitySpecificChecklist in ai.ts) falls
+//            back to calling operation "modality_checklist" for any scan type
+//            not covered by its built-in checklist library — but this backend
+//            never had a matching case, so every such call failed with
+//            "Unknown operation: modality_checklist" (visible in the console).
+async function generateModalityChecklist(scanType: string): Promise<string[]> {
+  const systemPrompt = `You are a senior radiologist creating a mandatory documentation
+checklist for a specific imaging study. Return a JSON array of concise checklist items
+(strings) that a radiologist must document or actively assess for this study — mandatory
+measurements, relevant scoring systems (e.g. BI-RADS, TI-RADS, LI-RADS, PI-RADS,
+Fleischner, Bosniak, Kellgren-Lawrence), critical negatives that must be explicitly stated,
+and adjacent organs/structures that should be reviewed. Return ONLY a JSON array of
+strings, maximum 30 items, no explanations.`;
+
+  const userPrompt = `Generate the mandatory documentation checklist for: ${scanType}`;
+
+  const raw = await callGemini(systemPrompt, userPrompt, true, 4096);
+  const parsed = extractJsonArray(raw);
+  return (parsed as string[] | null) ?? [];
 }
 
 // ─── Deno HTTP server ─────────────────────────────────────────────────────────
@@ -656,6 +854,10 @@ Deno.serve(async (req: Request) => {
 
       case "fix_spelling_negatives":
         result = await fixSpellingAndNegatives(payload.report_text ?? "");
+        break;
+
+      case "modality_checklist":
+        result = await generateModalityChecklist(payload.scan_type ?? "");
         break;
 
       case "full_pipeline": {
