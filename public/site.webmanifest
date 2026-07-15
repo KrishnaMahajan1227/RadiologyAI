@@ -1,0 +1,12 @@
+{
+  "name": "RadAI Copilot",
+  "short_name": "RadAI Copilot",
+  "description": "AI-assisted radiology reporting workspace for radiologists.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#03070f",
+  "theme_color": "#03070f",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

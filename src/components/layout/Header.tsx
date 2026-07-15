@@ -77,7 +77,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Search size={18} />
         </button>
 
-        <div className="text-xs text-slate-500 dark:text-slate-400 hidden lg:flex items-center gap-1.5 pr-1 mr-1 border-r border-slate-200/70 dark:border-white/10">
+        <div className="text-xs text-slate-500 dark:text-slate-400 hidden xl:flex items-center gap-1.5 pr-2 mr-1 border-r border-slate-200/70 dark:border-white/10" aria-hidden="true">
           <kbd className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 px-1.5 py-0.5 rounded-md text-[10px] font-mono">⌘N</kbd>
           <span>New Report</span>
         </div>
