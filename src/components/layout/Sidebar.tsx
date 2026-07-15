@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard, FileText, FolderOpen, LayoutTemplate,
   Zap, Settings, ChevronLeft, ChevronRight, Activity,
-  LogOut, Moon, Sun, X,
+  LogOut, Moon, Sun, X, Crown, Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { getUsageStatus } from '../../lib/subscription';
+import { UpgradeModal } from '../subscription/UpgradeModal';
 import type { Page } from '../../types';
 
 interface NavItem {
@@ -24,6 +26,8 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { state, navigate, dispatch } = useApp();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const usage = getUsageStatus(state.user, state.profile);
 
   const navItems: NavItem[] = [
     { page: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -105,6 +109,31 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
 
       {/* Bottom */}
       <div className="px-2.5 pb-4 border-t border-white/[0.07] pt-3 space-y-1">
+        {(!collapsed || isMobile) && !usage.isUnlimited && (
+          <button
+            onClick={() => setShowUpgrade(true)}
+            className="w-full text-left mb-1 rounded-xl border border-gold-400/25 bg-gold-400/[0.06] hover:bg-gold-400/[0.1] transition-colors px-3 py-2.5"
+          >
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="text-[11px] font-semibold text-gold-200 flex items-center gap-1.5">
+                <Sparkles size={11} /> {usage.limitReached ? 'Free reports used up' : `${usage.used}/${usage.limit} free reports`}
+              </span>
+              <span className="text-[10px] font-bold text-gold-300 uppercase tracking-wide">Upgrade</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${usage.limitReached ? 'bg-red-400' : 'bg-gold-gradient'}`}
+                style={{ width: `${Math.min(100, Math.round((usage.used / usage.limit) * 100))}%` }}
+              />
+            </div>
+          </button>
+        )}
+        {(!collapsed || isMobile) && usage.isUnlimited && state.profile?.plan && state.profile.plan !== 'free' && (
+          <div className="w-full mb-1 rounded-xl border border-gold-400/25 bg-gold-400/[0.06] px-3 py-2.5 flex items-center gap-2">
+            <Crown size={13} className="text-gold-300 shrink-0" />
+            <span className="text-[11px] font-semibold text-gold-200 capitalize">{state.profile.plan} plan — unlimited</span>
+          </div>
+        )}
         {(!collapsed || isMobile) && state.profile && (
           <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-xl bg-white/[0.04]">
             <div className="shrink-0 w-8 h-8 rounded-full bg-navy-gradient border border-gold-400/30 flex items-center justify-center text-gold-300 text-xs font-bold">
@@ -177,6 +206,13 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
           {railContent(true)}
         </aside>
       </div>
+
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        reportsUsed={usage.used}
+        reportsLimit={usage.limitReached ? usage.limit : undefined}
+      />
     </>
   );
 }

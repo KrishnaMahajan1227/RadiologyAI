@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Zap, Plus, Trash2, Loader2, X, CreditCard as Edit3, Save, Search, Copy, CheckCheck } from 'lucide-react';
+import { Zap, Plus, Trash2, Loader2, X, CreditCard as Edit3, Save, Search, Copy, CheckCheck, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { getUsageStatus } from '../../lib/subscription';
+import { UpgradeModal } from '../subscription/UpgradeModal';
 import type { Macro } from '../../types';
 
 const CATEGORIES = ['general', 'chest', 'neuro', 'musculoskeletal', 'abdomen', 'vascular', 'nuclear', 'pediatric'];
@@ -143,12 +145,20 @@ function MacroForm({ macro, onClose, onSaved }: MacroFormProps) {
 
 export function MacrosPage() {
   const { state, dispatch } = useApp();
+  const usage = getUsageStatus(state.user, state.profile);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingMacro, setEditingMacro] = useState<Macro | null>(null);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  const openNewMacro = () => {
+    if (usage.limitReached) { setShowUpgrade(true); return; }
+    setEditingMacro(null);
+    setShowForm(true);
+  };
 
   const handleSaved = (m: Macro) => {
     if (editingMacro) {
@@ -192,6 +202,8 @@ export function MacrosPage() {
         />
       )}
 
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reportsUsed={usage.used} reportsLimit={usage.limit} />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Macros</h2>
@@ -200,10 +212,10 @@ export function MacrosPage() {
           </p>
         </div>
         <button
-          onClick={() => { setEditingMacro(null); setShowForm(true); }}
+          onClick={openNewMacro}
           className="btn-primary w-full sm:w-auto justify-center"
         >
-          <Plus size={16} />
+          {usage.limitReached ? <Lock size={16} /> : <Plus size={16} />}
           New Macro
         </button>
       </div>
@@ -257,7 +269,7 @@ export function MacrosPage() {
             {state.macros.length === 0 ? 'No macros yet. Create shortcuts for common phrases.' : 'No macros match your search.'}
           </p>
           {state.macros.length === 0 && (
-            <button onClick={() => setShowForm(true)} className="text-sm text-navy-600 dark:text-navy-400 hover:underline">
+            <button onClick={openNewMacro} className="text-sm text-navy-600 dark:text-navy-400 hover:underline">
               Create macro
             </button>
           )}

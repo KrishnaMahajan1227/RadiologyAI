@@ -1,6 +1,7 @@
 import { FileText, FolderOpen, Clock, TrendingUp, ChevronRight, AlertCircle, CheckCircle2, Zap, Activity, BarChart3, Users, Target, ShieldAlert, Eye, Download } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { buildReportHTML, openPDF } from '../reports/ReportHTML';
+import { UsageBanner } from '../subscription/UsageBanner';
 import type { Report } from '../../types';
 
 export function Dashboard() {
@@ -115,6 +116,8 @@ export function Dashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 sm:space-y-6 animate-fadeIn">
+      <UsageBanner />
+
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>

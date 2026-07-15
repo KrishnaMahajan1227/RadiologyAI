@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { LayoutTemplate, Plus, Trash2, Loader2, X, CreditCard as Edit3, Save, GripVertical, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, Loader2, X, CreditCard as Edit3, Save, GripVertical, ChevronDown, ChevronUp, Star, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { getUsageStatus } from '../../lib/subscription';
+import { UpgradeModal } from '../subscription/UpgradeModal';
 import type { Template, TemplateSection, TemplateCondition } from '../../types';
 
 const SCAN_TYPES = [
@@ -306,6 +308,8 @@ function TemplateEditor({ template, onClose, onSaved }: TemplateEditorProps) {
 
 export function TemplatesPage() {
   const { state, dispatch } = useApp();
+  const usage = getUsageStatus(state.user, state.profile);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -332,6 +336,7 @@ export function TemplatesPage() {
   };
 
   const openNew = () => {
+    if (usage.limitReached) { setShowUpgrade(true); return; }
     setEditingTemplate(null);
     setShowEditor(true);
   };
@@ -346,6 +351,8 @@ export function TemplatesPage() {
         />
       )}
 
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reportsUsed={usage.used} reportsLimit={usage.limit} />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Templates</h2>
@@ -355,7 +362,7 @@ export function TemplatesPage() {
           onClick={openNew}
           className="btn-primary w-full sm:w-auto justify-center"
         >
-          <Plus size={16} />
+          {usage.limitReached ? <Lock size={16} /> : <Plus size={16} />}
           New Template
         </button>
       </div>

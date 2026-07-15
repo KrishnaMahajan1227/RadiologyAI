@@ -36,6 +36,10 @@ export interface Profile {
   aerb_license?: string;
   custom_disclaimer?: string;
 
+  plan: 'free' | 'monthly' | 'yearly' | 'enterprise';
+  plan_expires_at?: string | null;
+  is_unlimited: boolean;
+
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +70,7 @@ export interface Report {
   input_text: string;
   structured_data: StructuredData;
   technique: string;
+  clinical_information: string;
   findings: string;
   impression: string;
   generated_text: string;

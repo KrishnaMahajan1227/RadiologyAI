@@ -7,6 +7,7 @@ import {
   FileText, Users, CheckCheck, ArrowUpRight, Quote, Mail, Phone,
   MapPin, Twitter, Linkedin, Youtube, Instagram, MoveRight,
 } from 'lucide-react';
+import { PRICING, formatINR } from '../../lib/subscription';
 
 /* ─── Global Styles ────────────────────────────────────────────────────── */
 const GlobalStyles = () => (
@@ -414,6 +415,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
   const [mob, setMob]             = useState(false);
   const [scrolled, setScrolled]   = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [pricingBilling, setPricingBilling] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     const t = setInterval(() => setStep(p => (p + 1) % 4), 2600);
@@ -513,6 +515,8 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
       a: 'Our structured 4-week onboarding covers system integration, radiologist training, workflow customisation, pilot testing, and go-live support. A dedicated Customer Success Manager is assigned throughout. We have active implementations at Apollo, Fortis, Manipal, and Medanta.' },
     { q: 'How does RadAI handle critical findings and medico-legal compliance?',
       a: 'RadAI includes an automated critical findings detection engine that flags urgent incidental and primary findings in real time, triggers notification workflows, and documents every alert in the audit trail — ensuring full medico-legal compliance and quality governance.' },
+    { q: 'How much does RadAI cost?',
+      a: 'Every account gets 10 free AI-generated reports with no credit card required. After that, individual radiologists can upgrade to the Pro plan at ₹780 per user per month (or save with annual billing) for unlimited reports, macros, and templates. Hospitals and imaging networks needing multi-user accounts, integrations, or custom billing can reach out for Enterprise pricing.' },
   ];
 
   const integrations = [
@@ -568,7 +572,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
           "operatingSystem": "Cloud / Web",
           "description": "Enterprise AI radiology reporting software that automates structured radiology reports in under 3 minutes. HIPAA-ready, HL7 FHIR compliant, DPDP Act 2023 compliant. Trusted by 50+ healthcare organisations across India and globally.",
           "url": "https://radai.health",
-          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR", "description": "14-day free trial — no credit card required" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR", "description": "10 free AI-generated reports — no credit card required. Plans from ₹780/user/month." },
           "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "312", "bestRating": "5" },
           "provider": { "@type": "Organization", "name": "RadAI Technologies Pvt. Ltd.", "address": { "@type": "PostalAddress", "addressCountry": "IN" } },
         }) }} />
@@ -602,7 +606,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
 
             {/* Desktop nav */}
             <div style={{ display:'flex', alignItems:'center', gap:32 }} className="desk-nav">
-              {[{l:'Platform',h:'#platform'},{l:'Workflow',h:'#workflow'},{l:'Security',h:'#security'},{l:'Certifications',h:'#certifications'},{l:'Integrations',h:'#integrations'},{l:'FAQ',h:'#faq'}].map(n => (
+              {[{l:'Platform',h:'#platform'},{l:'Workflow',h:'#workflow'},{l:'Pricing',h:'#pricing'},{l:'Security',h:'#security'},{l:'Certifications',h:'#certifications'},{l:'Integrations',h:'#integrations'},{l:'FAQ',h:'#faq'}].map(n => (
                 <a key={n.l} href={n.h} className="nav-a">{n.l}</a>
               ))}
             </div>
@@ -624,7 +628,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             <button onClick={() => setMob(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text)' }}><X size={24} /></button>
           </div>
           <div style={{ padding:'28px 24px', display:'flex', flexDirection:'column', gap:4 }}>
-            {[{l:'Platform',h:'#platform'},{l:'Workflow',h:'#workflow'},{l:'Security',h:'#security'},{l:'Certifications',h:'#certifications'},{l:'Integrations',h:'#integrations'},{l:'FAQ',h:'#faq'}].map(n => (
+            {[{l:'Platform',h:'#platform'},{l:'Workflow',h:'#workflow'},{l:'Pricing',h:'#pricing'},{l:'Security',h:'#security'},{l:'Certifications',h:'#certifications'},{l:'Integrations',h:'#integrations'},{l:'FAQ',h:'#faq'}].map(n => (
               <a key={n.l} href={n.h} onClick={() => setMob(false)} style={{
                 display:'block', padding:'16px 18px', borderRadius:8,
                 color:'var(--text)', textDecoration:'none', fontWeight:500,
@@ -1225,6 +1229,127 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             </div>
           </div>
         </section>
+
+        <div className="gold-rule" />
+
+        {/* ══════════════ PRICING ══════════════ */}
+        <section id="pricing" style={{ position:'relative', zIndex:10, padding:'100px 24px' }}>
+          <div style={{ maxWidth:1160, margin:'0 auto' }}>
+            <div style={{ textAlign:'center', maxWidth:640, margin:'0 auto 44px' }}>
+              <div className="chip" style={{ marginBottom:16 }}><Sparkles size={12} /> Pricing</div>
+              <div className="sec-divider" />
+              <h2 className="sec-h2" style={{ fontFamily:'var(--font-disp)', fontSize:'2.9rem', fontWeight:900, lineHeight:1.08, letterSpacing:'-0.01em', textTransform:'uppercase' }}>
+                Simple, Transparent<br /><span className="grad">Pricing</span>
+              </h2>
+              <p style={{ marginTop:16, fontSize:'1rem', lineHeight:1.84, color:'var(--muted)' }}>
+                Every account starts with 10 free AI-generated reports — no credit card required. Upgrade whenever you're ready for unlimited reporting.
+              </p>
+            </div>
+
+            {/* Billing toggle */}
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:36 }}>
+              <div className="glass" style={{ display:'inline-flex', alignItems:'center', gap:4, borderRadius:12, padding:4 }}>
+                <button
+                  onClick={() => setPricingBilling('monthly')}
+                  style={{
+                    padding:'9px 20px', borderRadius:9, fontSize:'0.8rem', fontWeight:700, cursor:'pointer', border:'none',
+                    background: pricingBilling === 'monthly' ? 'rgba(200,168,75,0.14)' : 'transparent',
+                    color: pricingBilling === 'monthly' ? 'var(--gold)' : 'var(--muted)',
+                  }}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setPricingBilling('yearly')}
+                  style={{
+                    padding:'9px 20px', borderRadius:9, fontSize:'0.8rem', fontWeight:700, cursor:'pointer', border:'none', display:'flex', alignItems:'center', gap:8,
+                    background: pricingBilling === 'yearly' ? 'rgba(200,168,75,0.14)' : 'transparent',
+                    color: pricingBilling === 'yearly' ? 'var(--gold)' : 'var(--muted)',
+                  }}
+                >
+                  Yearly
+                  <span style={{ fontSize:'0.62rem', fontWeight:800, padding:'3px 7px', borderRadius:20, background:'rgba(0,196,140,0.14)', color:'#00c48c' }}>
+                    Save {PRICING.yearlySavingsPct}%
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Plan cards */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:20, alignItems:'stretch' }}>
+              {/* Free */}
+              <div className="glass" style={{ borderRadius:12, padding:'34px 30px', display:'flex', flexDirection:'column' }}>
+                <div style={{ fontFamily:'var(--font-disp)', fontWeight:800, fontSize:'1.05rem', textTransform:'uppercase', letterSpacing:'0.03em' }}>Free</div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:6, margin:'16px 0 4px' }}>
+                  <span style={{ fontFamily:'var(--font-disp)', fontSize:'2.4rem', fontWeight:900 }}>₹0</span>
+                </div>
+                <p style={{ fontSize:'0.8rem', color:'var(--muted)', marginBottom:24 }}>10 free reports, forever</p>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, marginBottom:26 }}>
+                  {['10 AI report generations','Full report workspace & editing','Preview & download every report','Case management'].map((f,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:9, fontSize:'0.82rem', color:'var(--text)' }}>
+                      <CheckCircle2 size={14} style={{ color:'var(--muted)', marginTop:2, flexShrink:0 }} /> {f}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn-o" style={{ justifyContent:'center' }} onClick={onGetStarted}>Start Free</button>
+              </div>
+
+              {/* Pro */}
+              <div className="glass" style={{ borderRadius:12, padding:'34px 30px', display:'flex', flexDirection:'column', position:'relative', border:'1px solid rgba(200,168,75,0.5)', boxShadow:'0 0 40px -12px rgba(200,168,75,0.25)' }}>
+                <span style={{ position:'absolute', top:-13, left:'50%', transform:'translateX(-50%)', fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.06em', textTransform:'uppercase', padding:'5px 14px', borderRadius:20, background:'linear-gradient(135deg,#e0c578,#c8a84b)', color:'#0a0e18', whiteSpace:'nowrap' }}>
+                  Most Popular
+                </span>
+                <div style={{ fontFamily:'var(--font-disp)', fontWeight:800, fontSize:'1.05rem', textTransform:'uppercase', letterSpacing:'0.03em', color:'var(--gold)' }}>Pro</div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:6, margin:'16px 0 4px' }}>
+                  <span style={{ fontFamily:'var(--font-disp)', fontSize:'2.4rem', fontWeight:900 }}>
+                    {formatINR(pricingBilling === 'monthly' ? PRICING.monthly : PRICING.yearlyMonthlyEquivalent)}
+                  </span>
+                  <span style={{ fontSize:'0.8rem', color:'var(--muted)' }}>/ user / mo</span>
+                </div>
+                <p style={{ fontSize:'0.8rem', color:'var(--muted)', marginBottom:24 }}>
+                  {pricingBilling === 'yearly' ? `Billed ${formatINR(PRICING.yearly)} / year` : 'Billed monthly · cancel anytime'}
+                </p>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, marginBottom:26 }}>
+                  {['Unlimited AI report generations','Unlimited macros & templates','Priority AI processing','PDF export with hospital letterhead','Email support'].map((f,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:9, fontSize:'0.82rem', color:'var(--text)' }}>
+                      <CheckCircle2 size={14} style={{ color:'var(--gold)', marginTop:2, flexShrink:0 }} /> {f}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn-p" style={{ justifyContent:'center' }} onClick={onGetStarted}>
+                  Start Free, Then Upgrade <ArrowRight size={14} />
+                </button>
+              </div>
+
+              {/* Enterprise */}
+              <div className="glass" style={{ borderRadius:12, padding:'34px 30px', display:'flex', flexDirection:'column' }}>
+                <div style={{ fontFamily:'var(--font-disp)', fontWeight:800, fontSize:'1.05rem', textTransform:'uppercase', letterSpacing:'0.03em', display:'flex', alignItems:'center', gap:8 }}>
+                  <Building2 size={16} /> Enterprise
+                </div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:6, margin:'16px 0 4px' }}>
+                  <span style={{ fontFamily:'var(--font-disp)', fontSize:'2.4rem', fontWeight:900 }}>Custom</span>
+                </div>
+                <p style={{ fontSize:'0.8rem', color:'var(--muted)', marginBottom:24 }}>For hospitals & imaging networks</p>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, marginBottom:26 }}>
+                  {['Everything in Pro, for your whole team','Multi-radiologist / multi-dept accounts','PACS, RIS & EMR integrations','Dedicated account manager','Custom billing & invoicing'].map((f,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:9, fontSize:'0.82rem', color:'var(--text)' }}>
+                      <CheckCircle2 size={14} style={{ color:'var(--muted)', marginTop:2, flexShrink:0 }} /> {f}
+                    </div>
+                  ))}
+                </div>
+                <a href="mailto:hello@radai.health?subject=Enterprise%20plan%20enquiry%20-%20RadAI%20Copilot" className="btn-o" style={{ justifyContent:'center', textDecoration:'none' }}>
+                  Contact Sales
+                </a>
+              </div>
+            </div>
+
+            <p style={{ textAlign:'center', fontSize:'0.78rem', color:'var(--muted)', marginTop:32 }}>
+              Prices in Indian Rupees, per user, exclusive of applicable taxes. Need a custom quote or bulk seats for your hospital? <a href="mailto:hello@radai.health" style={{ color:'var(--gold)' }}>Talk to sales</a>.
+            </p>
+          </div>
+        </section>
+
+        <div className="gold-rule" />
 
         {/* ══════════════ FAQ ══════════════ */}
         <section id="faq" style={{ position:'relative', zIndex:10, padding:'100px 24px' }}>

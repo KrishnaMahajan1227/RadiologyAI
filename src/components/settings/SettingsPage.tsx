@@ -2,10 +2,12 @@ import {useEffect ,useState } from 'react';
 import {
   Save, Loader2, User, Bell, Keyboard, Moon, Sun, Building2, GraduationCap,
   FileText, Award, Settings, Scale, CheckCircle2, AlertTriangle, Clock,
-  Zap, BarChart3,
+  Zap, BarChart3, CreditCard, Crown, Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { getUsageStatus, PRICING, formatINR } from '../../lib/subscription';
+import { UpgradeModal } from '../subscription/UpgradeModal';
 import type { Profile } from '../../types';
 
 /* -------------------------------------------------------------------------- */
@@ -201,6 +203,8 @@ function ToggleRow({
 export function SettingsPage() {
   const { state, dispatch } = useApp();
   const p = state.profile;
+  const usage = getUsageStatus(state.user, state.profile);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // ── Existing fields ───────────────────────────────────────────────────────
   const [name, setName] = useState(p?.name ?? '');
@@ -449,6 +453,57 @@ if (error) throw error;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-5 sm:space-y-6 animate-fadeIn">
+
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        reportsUsed={usage.used}
+        reportsLimit={usage.limitReached ? usage.limit : undefined}
+      />
+
+      {/* ── BILLING & PLAN ───────────────────────────────────────────────── */}
+      <SectionCard icon={CreditCard} title="Billing & Plan" badge={usage.isUnlimited ? 'Unlimited' : `${usage.used}/${usage.limit} free reports`}>
+        {usage.isUnlimited ? (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gold-100 dark:bg-gold-500/15 text-gold-600 dark:text-gold-300 flex items-center justify-center shrink-0">
+              <Crown size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-white capitalize">
+                {p?.plan && p.plan !== 'free' ? `${p.plan} plan` : 'Unlimited account'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Unlimited AI report generations, macros and templates.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${usage.limitReached ? 'bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-300' : 'bg-gold-100 dark:bg-gold-500/15 text-gold-600 dark:text-gold-300'}`}>
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                  Free plan — {usage.used} of {usage.limit} reports used
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Upgrade for unlimited reports, macros & templates — from {formatINR(PRICING.monthly)}/month.
+                </p>
+                <div className="mt-2 h-1.5 w-full max-w-[220px] rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${usage.limitReached ? 'bg-red-400' : 'bg-gold-gradient'}`}
+                    style={{ width: `${Math.min(100, Math.round((usage.used / usage.limit) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setShowUpgrade(true)} className="btn-primary shrink-0 w-full sm:w-auto justify-center">
+              Upgrade Plan
+            </button>
+          </div>
+        )}
+      </SectionCard>
 
       {/* ── PERSONAL INFORMATION ─────────────────────────────────────────── */}
       <SectionCard icon={User} title="Personal Information">

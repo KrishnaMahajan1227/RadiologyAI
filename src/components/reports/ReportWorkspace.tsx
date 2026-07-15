@@ -14,6 +14,8 @@ import { CopilotPanel } from './CopilotPanel';
 import { MistakeDetector } from './MistakeDetector';
 import { buildReportHTML, openPDF } from './ReportHTML';
 import { supabase } from '../../lib/supabase';
+import { getUsageStatus } from '../../lib/subscription';
+import { UpgradeModal } from '../subscription/UpgradeModal';
 import {
   runFullPipeline,
   suggestImprovements,
@@ -913,6 +915,41 @@ function ReportViewerModal({ report, onClose }: { report: Report; onClose: () =>
 
 export function ReportWorkspace() {
   const { state, dispatch } = useApp();
+  const usage = getUsageStatus(state.user, state.profile);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Blocks an AI action once the free-tier report quota is used up (demo /
+  // paid accounts always pass). Returns true if the action should proceed.
+  const checkUsageAllowed = useCallback(() => {
+    if (usage.limitReached) {
+      setShowUpgradeModal(true);
+      return false;
+    }
+    return true;
+  }, [usage.limitReached]);
+
+  // Bumps `profiles.reports_generated` by 1 right after a successful AI report
+  // generation (Generate / Regenerate / Disease-format all call this once they
+  // have real content back). Demo + paid/unlimited accounts are skipped since
+  // their usage is never limited/tracked. Updates local app state immediately
+  // so the usage banner, sidebar widget, and Generate button re-render with the
+  // new count right away — it does NOT wait for a full profile refetch.
+  const incrementReportUsage = useCallback(async () => {
+    if (!state.user || usage.isUnlimited) return;
+    const newCount = (state.profile?.reports_generated ?? 0) + 1;
+    if (state.profile) {
+      dispatch({ type: 'SET_PROFILE', profile: { ...state.profile, reports_generated: newCount } });
+    }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ reports_generated: newCount })
+        .eq('id', state.user.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to update usage count:', err);
+    }
+  }, [state.user, state.profile, usage.isUnlimited, dispatch]);
 
   // Core report state
   const [inputText, setInputText] = useState('');
@@ -1041,6 +1078,7 @@ export function ReportWorkspace() {
   ).slice(0, 8);
 
   const applyMacro = (macro: { trigger: string; expansion: string }) => {
+    if (!checkUsageAllowed()) { setShowMacroDropdown(false); return; }
     const slashIdx = inputText.lastIndexOf('/');
     const beforeSlash = inputText.slice(0, slashIdx);
     const afterSlashWord = inputText.slice(slashIdx).split(/\s/).slice(1).join(' ');
@@ -1102,6 +1140,7 @@ export function ReportWorkspace() {
   // ── Full pipeline generation ─────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
+    if (!checkUsageAllowed()) return;
     setGenerating(true); setSaved(false); setSpellingResult(null); setError('');
     try {
       const ctx = buildLearningContext();
@@ -1206,6 +1245,12 @@ export function ReportWorkspace() {
       }
 
       setShowQuality(true);
+
+      // Only count it against the free-tier quota if it actually produced a
+      // usable report — a failed/empty AI response shouldn't burn a credit.
+      const generationSucceeded = !(reportData as { generation_failed?: boolean }).generation_failed
+        && (finalTechnique || finalClinical || finalFindings || finalImpression);
+      if (generationSucceeded) await incrementReportUsage();
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Failed to generate report. Please try again.';
       console.error('Generation failed:', err);
@@ -1219,6 +1264,7 @@ export function ReportWorkspace() {
   // ── Regenerate report from existing structured data (without re-extracting) ──
   const handleRegenFromStructured = async () => {
     if (!structured || Object.keys(structured).length === 0) return;
+    if (!checkUsageAllowed()) return;
     setGenerating(true); setError('');
     try {
       const templateStr = getTemplateString();
@@ -1232,6 +1278,7 @@ export function ReportWorkspace() {
         if (result.validation_errors?.length) {
           console.warn('[Validation]', result.validation_errors);
         }
+        await incrementReportUsage();
       }
     } catch (err) {
       console.error('Regen failed:', err);
@@ -1242,6 +1289,7 @@ export function ReportWorkspace() {
 
   // ── Disease quick format ─────────────────────────────────────────────────────
   const handleDiseaseFormat = async (disease: string) => {
+    if (!checkUsageAllowed()) return;
     setGeneratingDisease(true); setShowDiseasePicker(false); setDiseaseSearch('');
     try {
       const modality = scanType.split(' ')[0];
@@ -1276,6 +1324,8 @@ export function ReportWorkspace() {
           if (followUpQs?.length) setQuestions(followUpQs);
         } catch { /* non-critical */ }
         finally { setLoadingFollowUp(false); }
+
+        await incrementReportUsage();
       }
     } catch (err) { console.error('Disease format failed:', err); }
     finally { setGeneratingDisease(false); }
@@ -1404,9 +1454,12 @@ export function ReportWorkspace() {
       if (error) throw error;
       if (data) {
         dispatch({ type: 'ADD_REPORT', report: data });
+        const newTimeSaved = (state.profile?.time_saved_minutes ?? 0) + 18;
+        if (state.profile) {
+          dispatch({ type: 'SET_PROFILE', profile: { ...state.profile, time_saved_minutes: newTimeSaved } });
+        }
         await supabase.from('profiles').update({
-          reports_generated: (state.profile?.reports_generated ?? 0) + 1,
-          time_saved_minutes: (state.profile?.time_saved_minutes ?? 0) + 18,
+          time_saved_minutes: newTimeSaved,
         }).eq('id', state.user.id);
       }
       setSaved(true);
@@ -1427,7 +1480,7 @@ export function ReportWorkspace() {
   const handleLoadReport = (report: Report) => {
     setReportTitle(report.title || '');
     setTechnique(extractFieldOrRaw(report.technique, 'technique'));
-    setClinicalInfo(extractFieldOrRaw((report as Record<string,unknown>).clinical_information as string, 'clinical_information'));
+    setClinicalInfo(extractFieldOrRaw(report.clinical_information, 'clinical_information'));
     setFindings(extractFieldOrRaw(report.findings, 'findings'));
     setImpression(extractFieldOrRaw(report.impression, 'impression'));
     setInputText(report.input_text || '');
@@ -1451,6 +1504,13 @@ export function ReportWorkspace() {
   return (
     <div className="flex h-full bg-slate-50 dark:bg-slate-950">
       {viewingReport && <ReportViewerModal report={viewingReport} onClose={() => setViewingReport(null)} />}
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reportsUsed={usage.used}
+        reportsLimit={usage.limit}
+      />
 
       {showFinalize && quality && (
         <FinalizationModal
@@ -1818,8 +1878,15 @@ export function ReportWorkspace() {
               className="flex items-center gap-1.5 bg-navy-600 hover:bg-navy-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-bold px-5 py-1.5 rounded-lg transition-colors">
               {generating
                 ? <><Loader2 size={12} className="animate-spin" /> Generating…</>
+                : usage.limitReached
+                ? <><Sparkles size={12} /> Upgrade to Generate</>
                 : <><Wand2 size={12} /> {selectedTemplateId ? 'Fill Template & Generate' : 'Generate Report'}</>}
             </button>
+            {!usage.isUnlimited && !usage.limitReached && (
+              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                {usage.remaining} free report{usage.remaining === 1 ? '' : 's'} left
+              </span>
+            )}
 
             {/* Extract structured data only */}
             <button
