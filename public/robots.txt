@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://radaicopilot.com/sitemap.xml
+Sitemap: https://radai.alottt.com/sitemap.xml
