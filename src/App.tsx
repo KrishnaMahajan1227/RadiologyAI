@@ -1,16 +1,29 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthPage } from './components/auth/AuthPage';
-import { Dashboard } from './components/dashboard/Dashboard';
-import { ReportWorkspace } from './components/reports/ReportWorkspace';
-import { CasesPage } from './components/cases/CasesPage';
-import { CaseDetail } from './components/cases/CaseDetail';
-import { TemplatesPage } from './components/templates/TemplatesPage';
-import { MacrosPage } from './components/macros/MacrosPage';
-import { SettingsPage } from './components/settings/SettingsPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { Loader2 } from 'lucide-react';
+
+// Authenticated-app-only screens are code-split out of the initial bundle.
+// The public landing page (what search engines crawl, and what Core Web
+// Vitals are measured against for anonymous visitors) stays lightweight;
+// this extra JS only downloads once someone actually logs in.
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
+const ReportWorkspace = lazy(() => import('./components/reports/ReportWorkspace').then(m => ({ default: m.ReportWorkspace })));
+const CasesPage = lazy(() => import('./components/cases/CasesPage').then(m => ({ default: m.CasesPage })));
+const CaseDetail = lazy(() => import('./components/cases/CaseDetail').then(m => ({ default: m.CaseDetail })));
+const TemplatesPage = lazy(() => import('./components/templates/TemplatesPage').then(m => ({ default: m.TemplatesPage })));
+const MacrosPage = lazy(() => import('./components/macros/MacrosPage').then(m => ({ default: m.MacrosPage })));
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 size={24} className="animate-spin text-gold-400" />
+    </div>
+  );
+}
 
 function AppInner() {
   const { state, dispatch } = useApp();
@@ -62,7 +75,7 @@ function AppInner() {
 
   return (
     <AppLayout onHeaderAction={handleHeaderAction}>
-      {renderPage()}
+      <Suspense fallback={<PageLoader />}>{renderPage()}</Suspense>
     </AppLayout>
   );
 }

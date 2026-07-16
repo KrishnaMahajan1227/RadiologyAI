@@ -9,9 +9,13 @@
     <meta name="description" content="RadAI Copilot turns radiologist dictation into structured, letterhead-ready reports in minutes. Built-in mistake detection, reusable templates and macros — free to try, no card required." />
     <meta name="keywords" content="AI radiology reporting software, radiology report generator, teleradiology reporting tool, voice dictation radiology, radiologist AI copilot, structured radiology reports, CT MRI X-ray reporting software, radiology workflow software India, clinical documentation AI, RadAI Copilot" />
     <meta name="author" content="Alottt.com" />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://radaicopilot.com/" />
     <meta name="theme-color" content="#03070f" />
+
+    <!-- Local / geo signals (India-focused audience) -->
+    <meta name="geo.region" content="IN-MH" />
+    <meta name="geo.placename" content="Jalgaon, Pune" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -21,6 +25,9 @@
     <meta property="og:url" content="https://radaicopilot.com/" />
     <meta property="og:locale" content="en_IN" />
     <meta property="og:image" content="https://radaicopilot.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="RadAI Copilot — AI radiology reporting software" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -33,9 +40,21 @@
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Performance -->
+    <!-- Performance: fonts loaded non-render-blocking (moved out of CSS @import) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      />
+    </noscript>
 
     <!-- Structured data -->
     <script type="application/ld+json">
@@ -81,6 +100,72 @@
           }
         ]
       }
+    }
+    </script>
+
+    <!-- FAQ structured data — must always match the visible FAQ section text exactly -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What exactly does RadAI Copilot generate for me?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You dictate or type the clinical findings; the copilot returns a structured draft report with technique, clinical information, findings and impression already organized. You review, edit anything that needs a human judgment call, and finalize — it drafts, you sign."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I still need to review the report before it goes out?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, always. RadAI Copilot is a drafting and consistency-checking tool for the reporting radiologist — it is not a substitute for clinical judgment or final sign-off. Every report stays in draft until you review and approve it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which imaging types does it work with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is built around free-text findings, which makes it modality-agnostic in practice — radiologists use it for CT, MRI, X-ray, ultrasound, mammography and more. Templates can be tailored to whichever protocols your practice reports most."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use my hospital's letterhead on the final report?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Add your hospital or practice letterhead and logo once in Settings, and every finalized PDF export carries it automatically."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it connect to my PACS or RIS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet as a direct integration — today RadAI Copilot is a standalone reporting workspace: you bring the findings (typed or dictated) and take away a finalized, letterhead-ready PDF."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens after my free reports run out?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Every account starts with 10 free AI-generated reports, no card required. After that, individual radiologists move to the Pro plan for unlimited reports, templates and macros. Practices and imaging centres needing multiple seats can reach out for a custom Enterprise arrangement."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is behind RadAI Copilot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "RadAI Copilot is built and operated by Alottt.com. You can reach the team directly at hello@alottt.com or +91 70382 55944 for onboarding, billing or technical questions."
+          }
+        }
+      ]
     }
     </script>
   </head>
