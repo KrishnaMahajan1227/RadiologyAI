@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, Clock } from 'lucide-react';
 import { SiteHeader } from '../components/landing/SiteHeader';
 import { SiteFooter } from '../components/landing/SiteFooter';
@@ -10,6 +10,9 @@ function formatDate(iso: string) {
 }
 
 export function BlogIndexPage() {
+  const navigate = useNavigate();
+  const goToSignIn = () => navigate('/signin');
+
   return (
     <div className="min-h-screen bg-navy-950 text-slate-200 antialiased overflow-x-hidden">
       <SEO
@@ -37,7 +40,7 @@ export function BlogIndexPage() {
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full bg-gold-500/[0.05] blur-3xl" />
       </div>
 
-      <SiteHeader onGetStarted={() => {}} />
+      <SiteHeader onGetStarted={goToSignIn} />
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-20 pb-4 text-center">
         <p className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-gold-400 mb-3">RadAI Copilot Blog</p>
