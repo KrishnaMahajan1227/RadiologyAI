@@ -1,9 +1,18 @@
-import { useState, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthPage } from './components/auth/AuthPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { Loader2 } from 'lucide-react';
+
+// Public marketing pages — each is a real, indexable route (not just an
+// anchor on one long landing page), which is what lets Google crawl and
+// rank them individually.
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage').then(m => ({ default: m.FeaturesPage })));
+const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ default: m.PricingPage })));
+const BlogIndexPage = lazy(() => import('./pages/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 
 // Authenticated-app-only screens are code-split out of the initial bundle.
 // The public landing page (what search engines crawl, and what Core Web
@@ -25,9 +34,32 @@ function PageLoader() {
   );
 }
 
+/** Everything a signed-out visitor (and every search engine crawler) can
+ *  reach. Each of these is a distinct URL with its own <title>, meta
+ *  description and canonical tag — see src/components/seo/SEO.tsx — so it
+ *  can be indexed on its own instead of every visitor and every crawl only
+ *  ever seeing "/". */
+function PublicSite() {
+  const navigate = useNavigate();
+  const goToSignIn = () => navigate('/signin');
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<LandingPage onGetStarted={goToSignIn} />} />
+        <Route path="/signin" element={<AuthPage />} />
+        <Route path="/features" element={<FeaturesPage onGetStarted={goToSignIn} />} />
+        <Route path="/pricing" element={<PricingPage onGetStarted={goToSignIn} />} />
+        <Route path="/blog" element={<BlogIndexPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage onGetStarted={goToSignIn} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 function AppInner() {
   const { state, dispatch } = useApp();
-  const [showLanding, setShowLanding] = useState(true);
 
   if (state.authLoading) {
     return (
@@ -46,11 +78,7 @@ function AppInner() {
   }
 
   if (!state.user) {
-    return showLanding ? (
-      <LandingPage onGetStarted={() => setShowLanding(false)} />
-    ) : (
-      <AuthPage />
-    );
+    return <PublicSite />;
   }
 
   const handleHeaderAction = (action: string) => {

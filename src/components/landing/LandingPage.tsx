@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Activity, ArrowRight, ArrowUpRight, Brain, Check, CheckCircle2, ChevronDown,
   Clock, FileText, Layers3, Lock, Mail, Menu, Mic, MapPin, Phone, ShieldCheck,
@@ -7,6 +8,8 @@ import {
   Fingerprint, Search, FolderOpen, Type,
 } from 'lucide-react';
 import { PRICING, formatINR } from '../../lib/subscription';
+import { SEO } from '../seo/SEO';
+import { BLOG_POSTS } from '../../data/blogPosts';
 
 /* ────────────────────────────────────────────────────────────────────────
    Content — grounded in what the product actually does. No invented
@@ -17,8 +20,8 @@ import { PRICING, formatINR } from '../../lib/subscription';
 const NAV_LINKS = [
   { label: 'Platform', href: '#platform' },
   { label: 'How it works', href: '#workflow' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Security', href: '#security' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Blog', href: '/blog' },
   { label: 'FAQ', href: '#faq' },
 ];
 
@@ -228,6 +231,11 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
 
   return (
     <div className="min-h-screen bg-navy-950 text-slate-200 antialiased overflow-x-hidden">
+      <SEO
+        path="/"
+        title="RadAI Copilot | AI Radiology Reporting Software for Radiologists"
+        description="AI radiology reporting software for radiologists — turn dictation into structured, letterhead-ready reports in minutes. Free trial, no card required."
+      />
       {/* Structured data — honest: no invented reviews, no unverified partner claims */}
       <script
         type="application/ld+json"
@@ -280,15 +288,25 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
           </a>
 
           <nav className="hidden lg:flex items-center gap-8">
-            {NAV_LINKS.map((n) => (
-              <a
-                key={n.label}
-                href={n.href}
-                className="text-[0.8rem] font-medium text-slate-400 hover:text-gold-300 transition-colors tracking-wide"
-              >
-                {n.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((n) =>
+              n.href.startsWith('#') ? (
+                <a
+                  key={n.label}
+                  href={n.href}
+                  className="text-[0.8rem] font-medium text-slate-400 hover:text-gold-300 transition-colors tracking-wide"
+                >
+                  {n.label}
+                </a>
+              ) : (
+                <Link
+                  key={n.label}
+                  to={n.href}
+                  className="text-[0.8rem] font-medium text-slate-400 hover:text-gold-300 transition-colors tracking-wide"
+                >
+                  {n.label}
+                </Link>
+              )
+            )}
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -329,16 +347,27 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-1">
-            {NAV_LINKS.map((n) => (
-              <a
-                key={n.label}
-                href={n.href}
-                onClick={() => setMobileOpen(false)}
-                className="px-3 py-3.5 rounded-lg text-slate-200 font-medium text-[0.95rem] hover:bg-white/5 tap-target flex items-center"
-              >
-                {n.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((n) =>
+              n.href.startsWith('#') ? (
+                <a
+                  key={n.label}
+                  href={n.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-3.5 rounded-lg text-slate-200 font-medium text-[0.95rem] hover:bg-white/5 tap-target flex items-center"
+                >
+                  {n.label}
+                </a>
+              ) : (
+                <Link
+                  key={n.label}
+                  to={n.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-3.5 rounded-lg text-slate-200 font-medium text-[0.95rem] hover:bg-white/5 tap-target flex items-center"
+                >
+                  {n.label}
+                </Link>
+              )
+            )}
           </nav>
           <div className="p-5 border-t border-white/10">
             <button
@@ -530,6 +559,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             <h2 className="font-display font-bold text-white text-[1.8rem] sm:text-[2.3rem] leading-tight">
               Everything a busy reporting day actually needs.
             </h2>
+            <Link to="/features" className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-gold-300 hover:text-gold-200 transition-colors">
+              See the full feature breakdown <ArrowUpRight size={14} />
+            </Link>
           </Reveal>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((f, i) => {
@@ -596,6 +628,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
               Simple pricing, per radiologist.
             </h2>
             <p className="text-[0.9rem] text-slate-400">No setup fees. No card required to start. Cancel anytime.</p>
+            <Link to="/pricing" className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-gold-300 hover:text-gold-200 transition-colors">
+              See full plan comparison &amp; billing FAQs <ArrowUpRight size={14} />
+            </Link>
           </Reveal>
 
           <div className="flex justify-center mb-10">
@@ -696,6 +731,50 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
         </div>
       </section>
 
+      {/* ══════════════ BLOG TEASER ══════════════ */}
+      <section id="blog-teaser" className="border-t border-white/[0.06]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+          <Reveal id="blog-head" className="flex flex-wrap items-end justify-between gap-4 mb-10">
+            <div className="max-w-xl">
+              <p className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-gold-400 mb-3">From the blog</p>
+              <h2 className="font-display font-bold text-white text-[1.8rem] sm:text-[2.3rem] leading-tight">
+                Reporting workflow, written for radiologists.
+              </h2>
+            </div>
+            <Link to="/blog" className="inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-gold-300 hover:text-gold-200 transition-colors">
+              View all articles <ArrowUpRight size={14} />
+            </Link>
+          </Reveal>
+          <div className="grid sm:grid-cols-3 gap-5">
+            {BLOG_POSTS.map((post) => (
+              <Reveal id={`blog-${post.slug}`} key={post.slug}>
+                <Link
+                  to={`/blog/${post.slug}`}
+                  className="group block h-full rounded-2xl border border-white/10 bg-white/[0.02] hover:border-gold-400/25 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+                >
+                  <div className="aspect-[16/10] overflow-hidden bg-navy-900">
+                    <img
+                      src={post.heroImage}
+                      alt={post.heroImageAlt}
+                      width={400}
+                      height={250}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <span className="text-[0.65rem] font-bold uppercase tracking-wider text-gold-300">{post.category}</span>
+                    <h3 className="mt-1.5 font-display font-semibold text-white text-[0.95rem] leading-snug group-hover:text-gold-200 transition-colors">
+                      {post.title}
+                    </h3>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ══════════════ FAQ ══════════════ */}
       <section id="faq" className="border-t border-white/[0.06] bg-white/[0.015]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
@@ -765,15 +844,12 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             <div>
               <h4 className="text-[0.72rem] font-bold uppercase tracking-wider text-gold-300 mb-4">Platform</h4>
               <ul className="space-y-2.5">
-                {[
-                  { l: 'How it works', h: '#workflow' },
-                  { l: 'Features', h: '#platform' },
-                  { l: 'Pricing', h: '#pricing' },
-                  { l: 'Security', h: '#security' },
-                  { l: 'FAQ', h: '#faq' },
-                ].map((n) => (
-                  <li key={n.l}><a href={n.h} className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">{n.l}</a></li>
-                ))}
+                <li><a href="#workflow" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">How it works</a></li>
+                <li><Link to="/features" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">Features</Link></li>
+                <li><Link to="/pricing" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link to="/blog" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><a href="#security" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">Security</a></li>
+                <li><a href="#faq" className="text-[0.83rem] text-slate-400 hover:text-white transition-colors">FAQ</a></li>
               </ul>
             </div>
 
