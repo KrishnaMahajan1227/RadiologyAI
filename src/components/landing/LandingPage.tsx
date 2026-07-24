@@ -240,27 +240,60 @@ export function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'SoftwareApplication',
-            name: 'RadAI Copilot',
-            applicationCategory: 'MedicalApplication',
-            operatingSystem: 'Web',
-            description:
-              'AI-assisted radiology reporting workspace for radiologists and teleradiology practices. Dictate findings, get a structured draft report, catch inconsistencies before sign-off, and export on your own letterhead.',
-            offers: {
-              '@type': 'Offer',
-              price: String(PRICING.monthly),
-              priceCurrency: 'INR',
-              description: `${PRICING.monthly} per user per month after 10 free AI-generated reports.`,
+          __html: JSON.stringify([
+            {
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'RadAI Copilot',
+              applicationCategory: 'MedicalApplication',
+              operatingSystem: 'Web',
+              description:
+                'AI-assisted radiology reporting workspace for radiologists and teleradiology practices. Dictate findings, get a structured draft report, catch inconsistencies before sign-off, and export on your own letterhead.',
+              url: 'https://radai.alottt.com/',
+              offers: {
+                '@type': 'Offer',
+                price: String(PRICING.monthly),
+                priceCurrency: 'INR',
+                description: `${PRICING.monthly} per user per month after 10 free AI-generated reports.`,
+              },
+              provider: {
+                '@type': 'Organization',
+                name: 'Alottt.com',
+                email: 'hello@alottt.com',
+                telephone: '+91-7038255944',
+              },
             },
-            provider: {
+            {
+              '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'Alottt.com',
+              name: 'RadAI Copilot',
+              alternateName: 'Alottt.com',
+              url: 'https://radai.alottt.com/',
               email: 'hello@alottt.com',
               telephone: '+91-7038255944',
+              sameAs: [],
             },
-          }),
+            {
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'RadAI Copilot',
+              url: 'https://radai.alottt.com/',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: 'https://radai.alottt.com/blog?q={search_term_string}',
+                'query-input': 'required name=search_term_string',
+              },
+            },
+            {
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: FAQ_ITEMS.map((f) => ({
+                '@type': 'Question',
+                name: f.q,
+                acceptedAnswer: { '@type': 'Answer', text: f.a },
+              })),
+            },
+          ]),
         }}
       />
 

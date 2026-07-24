@@ -52,6 +52,15 @@ export function BlogPostPage({ onGetStarted }: { onGetStarted: () => void }) {
               acceptedAnswer: { '@type': 'Answer', text: f.a },
             })),
           },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://radai.alottt.com/' },
+              { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://radai.alottt.com/blog' },
+              { '@type': 'ListItem', position: 3, name: post.title, item: `https://radai.alottt.com/blog/${post.slug}` },
+            ],
+          },
         ]}
       />
 

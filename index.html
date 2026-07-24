@@ -7,6 +7,22 @@
     <!-- Google Search Console verification -->
     <meta name="google-site-verification" content="OEn8CnZg-qteOUXkTed1J7pcXggrqoNvhVnIjG7cJ2k" />
 
+    <!-- Canonical-domain safety net: the app is also reachable at the
+         raw Vercel preview domain (radiology-ai-psi.vercel.app). Having
+         the same content live and crawlable on two different hosts splits
+         ranking signals and can look like duplicate content to Google, so
+         this sends any visit on the vercel.app host to the real domain
+         before anything else runs. The primary fix is the 301 in
+         vercel.json; this is just a backup in case that host is ever hit
+         directly without going through that redirect. -->
+    <script>
+      (function () {
+        if (window.location.hostname === 'radiology-ai-psi.vercel.app') {
+          window.location.replace('https://radai.alottt.com' + window.location.pathname + window.location.search);
+        }
+      })();
+    </script>
+
     <!-- Primary SEO -->
     <title>RadAI Copilot | AI Radiology Reporting Software for Radiologists</title>
     <meta name="description" content="AI radiology reporting software for radiologists — turn dictation into structured, letterhead-ready reports in minutes. Free trial, no card required." />

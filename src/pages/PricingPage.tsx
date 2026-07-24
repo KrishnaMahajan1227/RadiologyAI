@@ -64,28 +64,38 @@ export function PricingPage({ onGetStarted }: { onGetStarted: () => void }) {
         path="/pricing"
         title="Pricing | RadAI Copilot — AI Radiology Reporting Software"
         description={`Simple, per-radiologist pricing for RadAI Copilot: ${FREE_REPORT_LIMIT} free AI-generated reports, then ${formatINR(PRICING.monthly)}/month or ${formatINR(PRICING.yearly)}/year. No card required to start, cancel anytime.`}
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'Product',
-          name: 'RadAI Copilot Pro',
-          description: 'AI-assisted radiology reporting workspace subscription for radiologists.',
-          offers: [
-            {
-              '@type': 'Offer',
-              name: 'Pro — Monthly',
-              price: String(PRICING.monthly),
-              priceCurrency: 'INR',
-              availability: 'https://schema.org/InStock',
-            },
-            {
-              '@type': 'Offer',
-              name: 'Pro — Yearly',
-              price: String(PRICING.yearly),
-              priceCurrency: 'INR',
-              availability: 'https://schema.org/InStock',
-            },
-          ],
-        }}
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: 'RadAI Copilot Pro',
+            description: 'AI-assisted radiology reporting workspace subscription for radiologists.',
+            offers: [
+              {
+                '@type': 'Offer',
+                name: 'Pro — Monthly',
+                price: String(PRICING.monthly),
+                priceCurrency: 'INR',
+                availability: 'https://schema.org/InStock',
+              },
+              {
+                '@type': 'Offer',
+                name: 'Pro — Yearly',
+                price: String(PRICING.yearly),
+                priceCurrency: 'INR',
+                availability: 'https://schema.org/InStock',
+              },
+            ],
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://radai.alottt.com/' },
+              { '@type': 'ListItem', position: 2, name: 'Pricing', item: 'https://radai.alottt.com/pricing' },
+            ],
+          },
+        ]}
       />
 
       <div className="fixed inset-0 -z-10 pointer-events-none">

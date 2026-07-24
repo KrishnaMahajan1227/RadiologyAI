@@ -71,15 +71,25 @@ export function FeaturesPage({ onGetStarted }: { onGetStarted: () => void }) {
         path="/features"
         title="Features | AI Radiology Reporting Software — RadAI Copilot"
         description="A full breakdown of RadAI Copilot's radiology reporting features: dictation-to-structured-draft, mistake detection, templates, macros, case tracking and letterhead PDF export."
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'WebPage',
-          name: 'RadAI Copilot Features',
-          url: 'https://radai.alottt.com/features',
-          description:
-            "A full breakdown of RadAI Copilot's radiology reporting features: dictation-to-structured-draft, mistake detection, templates, macros, case tracking and letterhead PDF export.",
-          isPartOf: { '@type': 'WebSite', name: 'RadAI Copilot', url: 'https://radai.alottt.com/' },
-        }}
+        jsonLd={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: 'RadAI Copilot Features',
+            url: 'https://radai.alottt.com/features',
+            description:
+              "A full breakdown of RadAI Copilot's radiology reporting features: dictation-to-structured-draft, mistake detection, templates, macros, case tracking and letterhead PDF export.",
+            isPartOf: { '@type': 'WebSite', name: 'RadAI Copilot', url: 'https://radai.alottt.com/' },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://radai.alottt.com/' },
+              { '@type': 'ListItem', position: 2, name: 'Features', item: 'https://radai.alottt.com/features' },
+            ],
+          },
+        ]}
       />
 
       <div className="fixed inset-0 -z-10 pointer-events-none">
